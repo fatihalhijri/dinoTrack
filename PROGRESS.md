@@ -6,7 +6,7 @@ Tahap berikutnya: **Tahap 01** (database, model & enum).
 
 | Tahap | Nama | Status | Tanggal | Catatan |
 |---|---|---|---|---|
-| 00 | Setup proyek & tooling | ✅ | 2026-10-04 | Package, kontrak, fake, stub, Money, script composer. Pembuangan Teams ditunda (lihat utang teknis). Pint, PHPStan, 114 test hijau |
+| 00 | Setup proyek & tooling | ✅ | 2026-10-04 | Package, kontrak, fake, stub, Money, script composer. Fitur Teams starter kit dibuang (lihat T6). Pint, PHPStan, test hijau |
 | 01 | Database, model & enum | ⬜ | | |
 | 02 | Role, permission & otorisasi | ⬜ | | |
 | 03 | Master data (paket, router, pelanggan) | ⬜ | | |
@@ -47,9 +47,10 @@ Catat di sini setiap keputusan yang menyimpang dari `docs/` beserta alasannya.
 | 2026-10-04 | T3 Model `Customer`, `Invoice`, `Router` dibuat sebagai kelas kosong di Tahap 00 | Interface di `app/Contracts` mengetik parameter dengan model itu; skema dan relasi diisi di Tahap 01 |
 | 2026-10-04 | T4 `declare_strict_types` diterapkan ke seluruh kode (bukan hanya file baru); `database/migrations` dikecualikan dari Pint | Konsistensi `composer lint`; migration yang sudah di-commit tidak boleh diubah |
 | 2026-10-04 | T5 Enum `PaymentChargeStatus` dibuat di Tahap 00 | Dipakai DTO `PaymentChargeResult`/`GatewayNotification`; Tahap 01 memakainya untuk `payment_charges.status` |
+| 2026-10-04 | T6 Fitur Teams starter kit dibuang (backend, React, migration `drop_teams_feature`); dashboard menjadi `/dashboard` | Arsitektur single-tenant (K1); Teams tidak dipakai |
 
 ## Utang teknis
 
 Hal yang sengaja ditunda untuk dikerjakan nanti.
 
-- Fitur Teams bawaan starter kit (model, controller, middleware, policy, rule, notification, factory, test, ~30 file React) masih ada, padahal arsitektur single-tenant. Keputusan: dibuang, tetapi penghapusan file ditunda karena belum diizinkan. Cakupan: hapus file Teams; bersihkan `User`, `UserFactory`, `CreateNewUser`, `FortifyServiceProvider`, `HandleInertiaRequests`, respons Fortify, route (dashboard menjadi `/dashboard`), `bootstrap/app.php`, `routes/console.php`; buat migration baru yang menghapus tabel `teams`, `team_members`, `team_invitations` dan kolom `users.current_team_id` (migration lama tidak diubah); bersihkan komponen React terkait. Kerjakan sebelum Tahap 02, karena Tahap 02 menyentuh `User` dan role.
+Belum ada.
