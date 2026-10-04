@@ -40,7 +40,7 @@ Pastikan sudah terpasang di Windows:
 
 | Alat | Cek versi |
 |---|---|
-| PHP 8.3+ | `php -v` |
+| PHP 8.4+ | `php -v` |
 | Composer | `composer -V` |
 | Node.js 22+ | `node -v` |
 | Git for Windows | `git --version` |

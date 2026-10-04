@@ -23,10 +23,11 @@ Catat di sini setiap keputusan yang menyimpang dari `docs/` beserta alasannya.
 
 | Tanggal | Keputusan | Alasan |
 |---|---|---|
-| | | |
+| 2026-10-04 | Database dev dan test memakai MySQL (bukan SQLite); test memakai database `dinotrack_testing` | `pdo_sqlite` tidak terpasang; sesuai stack MySQL 8 |
+| 2026-10-04 | Stack dinaikkan ke Laravel 13 / PHP 8.4; timezone `Asia/Jakarta`, locale `id` | Sesuai versi terpasang dan CLAUDE.md |
 
 ## Utang teknis
 
 Hal yang sengaja ditunda untuk dikerjakan nanti.
 
-- 
+- Fitur Teams bawaan starter kit (model, controller, middleware, test) masih ada, padahal arsitektur single-tenant. Putuskan di Tahap 00: dibuang atau dipertahankan.
