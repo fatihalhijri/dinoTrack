@@ -5,7 +5,7 @@
 | Keputusan | Pilihan | Alasan |
 |---|---|---|
 | Bentuk aplikasi | Monolit Laravel + Inertia + React | Satu proyek, satu deploy, cepat dikembangkan |
-| Tenancy v1 | **Single-tenant** (satu ISP per instalasi) | Lebih sederhana. Jika ingin SaaS, putuskan **sebelum Tahap 01** karena memengaruhi semua tabel |
+| Tenancy v1 | **Single-tenant** (satu ISP per instalasi) — **keputusan final 2026-10-04**, tanpa `tenant_id` | Lebih sederhana. Menjadi SaaS kelak berarti perubahan skema besar dan harus diputuskan ulang |
 | Logika bisnis | Action classes | Mudah diuji, bisa dipanggil dari controller, job, command |
 | Integrasi eksternal | Interface + implementasi + fake | Bisa ganti penyedia, test tidak menyentuh layanan asli |
 | Proses async | Laravel Queue | Webhook cepat, retry otomatis saat router/WA gagal |
@@ -17,7 +17,7 @@
 ```
 app/
 ├── Actions/                 Satu kelas = satu aksi bisnis, method handle()
-│   ├── Customers/           CreateCustomer, UpdateCustomer, TerminateCustomer
+│   ├── Customers/           CreateCustomer, UpdateCustomer, ActivateNewCustomer, TerminateCustomer
 │   ├── Invoices/            GenerateMonthlyInvoices, CancelInvoice, MarkInvoiceOverdue
 │   ├── Payments/            RecordManualPayment, ProcessGatewayNotification
 │   └── Network/             IsolateCustomer, ActivateCustomer
@@ -52,8 +52,17 @@ tests/
 ```
 Scheduler (harian 00:10)
   → GenerateMonthlyInvoices
-      → buat invoice untuk subscription yang jatuh tagih hari ini
+      → buat invoice untuk setiap periode yang sudah dimulai dan belum punya invoice
+        (catch-up, aman dijalankan ulang)
       → dispatch SendInvoiceNotification (queue)
+```
+
+### Aktivasi pelanggan baru
+```
+Admin/kasir menandai "terpasang" → ActivateNewCustomer (transaksi)
+  → status = active, installed_at diisi
+  → NetworkController: aktifkan secret PPPoE (via job)
+  → buat invoice pertama (prorata bila berlaku) + dispatch SendInvoiceNotification
 ```
 
 ### Pembayaran QRIS
@@ -63,8 +72,9 @@ Pelanggan bayar → Payment gateway → POST /webhooks/payments/midtrans
   → verifikasi signature
   → ProcessGatewayNotification (idempotent, dalam transaksi)
       → invoice = paid, simpan payment
-      → jika pelanggan isolated → dispatch ActivateCustomerJob
-      → dispatch SendPaymentConfirmation
+      → jika pelanggan isolated dan isolation_reason = overdue → dispatch ActivateCustomerJob
+      → pembayaran anomali: simpan payment dengan review_status = needs_review, invoice tidak berubah
+      → dispatch SendPaymentConfirmation (hanya pembayaran normal)
   → respons 200 cepat
 ```
 

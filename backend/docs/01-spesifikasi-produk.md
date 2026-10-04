@@ -21,8 +21,8 @@ diaktifkan otomatis sesuai status pembayaran.
 | Role | Hak akses utama |
 |---|---|
 | **admin** | Semua fitur, termasuk pengaturan, router, user, dan laporan |
-| **kasir** | Lihat pelanggan dan tagihan, catat pembayaran manual, kirim ulang tagihan |
-| **teknisi** | Lihat data pelanggan dan status koneksi, tambah pelanggan baru (status menunggu aktivasi) |
+| **kasir** | Lihat pelanggan dan tagihan, tandai pelanggan baru "terpasang" (aktivasi), catat pembayaran manual, kirim ulang tagihan |
+| **teknisi** | Lihat data pelanggan dan status koneksi, tambah pelanggan baru (status `pending`). Tidak bisa mengaktifkan pelanggan |
 
 ## Modul dan fitur
 
@@ -42,10 +42,12 @@ diaktifkan otomatis sesuai status pembayaran.
 - CRUD pelanggan: kode pelanggan, nama, nomor WhatsApp, alamat, ODP, koordinat (opsional)
 - Data koneksi: router, username PPPoE, paket
 - Status: `pending`, `active`, `isolated`, `terminated`
+- Aktivasi pelanggan baru ("terpasang") oleh admin atau kasir; tagihan pertama langsung terbit
+- Pelanggan `terminated` bisa diaktifkan kembali (kembali ke `pending`, riwayat tetap)
 - Riwayat tagihan, pembayaran, dan aktivitas per pelanggan
 
 ### 5. Langganan (subscription)
-- Menghubungkan pelanggan dengan paket, tanggal mulai, tanggal tagih
+- Menghubungkan pelanggan dengan paket, tanggal mulai, tanggal tagih (`billing_day`, bebas dari tanggal pasang)
 - Ganti paket berlaku pada periode tagihan berikutnya
 
 ### 6. Tagihan (invoice)
@@ -57,12 +59,14 @@ diaktifkan otomatis sesuai status pembayaran.
 ### 7. Pembayaran
 - Otomatis via QRIS dinamis (payment gateway)
 - Manual oleh kasir (tunai/transfer) dengan catatan
-- Setiap pembayaran lunas memicu aktivasi jika pelanggan sedang diisolir
+- Satu pembayaran = satu invoice, nominal harus pas (tanpa pembayaran sebagian atau saldo)
+- Setiap pembayaran lunas memicu aktivasi jika pelanggan sedang diisolir otomatis (karena tunggakan)
+- Pembayaran anomali (ganda, terlambat, invoice sudah dibatalkan) dicatat dan ditandai "perlu tinjauan" untuk admin
 
 ### 8. Isolir & aktivasi
-- Isolir otomatis jika tagihan lewat masa toleransi
-- Aktivasi otomatis setelah lunas
-- Isolir/aktivasi manual oleh admin dengan alasan
+- Isolir otomatis jika tagihan lewat masa toleransi (default 3 hari, bisa 0)
+- Aktivasi otomatis setelah lunas, hanya untuk isolir otomatis
+- Isolir/aktivasi manual oleh admin dengan alasan; isolir manual hanya dibuka manual
 
 ### 9. Notifikasi WhatsApp
 - Tagihan terbit, pengingat H-3, pengingat hari jatuh tempo,

@@ -38,12 +38,16 @@ interface PaymentGateway
 - Status gagal: `expire`, `cancel`, `deny`, `failure`
 - **Jangan percaya payload mentah**: setelah signature valid, boleh juga
   memanggil `checkStatus()` untuk konfirmasi ganda.
-- Cocokkan `gross_amount` dengan `payment_charges.amount`.
+- Cocokkan `gross_amount` dengan `payment_charges.amount`. Jika tidak cocok,
+  atau invoice sudah `paid`/`cancelled`, perlakukan sebagai pembayaran anomali
+  (`review_status = needs_review`), tetap respons 200.
 
 ### order_id
 
 Format: `{nomor_invoice_tanpa_slash}-{urutan_percobaan}`, contoh
-`INV202610000123-1`. Unik per percobaan charge.
+`INV20261000001-1` (dari `INV/2026/10/00001`). Unik per percobaan charge.
+Charge baru hanya dibuat jika charge sebelumnya `expired`/`failed`
+(lihat `docs/04-aturan-bisnis.md`).
 
 ### Konfigurasi `.env`
 

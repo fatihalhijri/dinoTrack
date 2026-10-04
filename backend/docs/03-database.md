@@ -66,9 +66,10 @@ Bawaan Laravel + role lewat spatie/laravel-permission.
 | status | string | `pending`, `active`, `isolated`, `terminated` |
 | installed_at | date nullable | |
 | isolated_at | timestamp nullable | |
+| isolation_reason | string nullable | `overdue` (otomatis) atau `manual`; null jika tidak diisolir. Hanya isolir `overdue` yang dibuka otomatis saat lunas |
 | terminated_at | timestamp nullable | |
 | notes | text nullable | |
-| softDeletes | | |
+| softDeletes | | hanya untuk salah input; pelanggan yang sudah punya invoice tidak boleh dihapus (gunakan `terminated`) |
 
 Index: `status`, unique (`router_id`, `pppoe_username`).
 
@@ -78,25 +79,25 @@ Index: `status`, unique (`router_id`, `pppoe_username`).
 | customer_id | foreignId | |
 | package_id | foreignId | |
 | price | unsignedBigInteger | harga dikunci saat berlangganan |
-| billing_day | unsignedTinyInteger | 1–28 |
+| billing_day | unsignedTinyInteger | 1–28; diisi per langganan, bebas dari tanggal pasang (lihat `docs/04-aturan-bisnis.md`) |
 | starts_at | date | |
 | ends_at | date nullable | |
 | next_package_id | foreignId nullable | ganti paket periode berikutnya |
 
-Satu pelanggan hanya boleh punya satu subscription aktif (`ends_at` null).
+Satu pelanggan hanya boleh punya satu subscription aktif (`ends_at` null). Pelanggan `terminated` yang diaktifkan kembali mendapat subscription baru; subscription lama tetap sebagai riwayat.
 
 ### invoices
 | Kolom | Tipe | Catatan |
 |---|---|---|
-| number | string unique | `INV/2026/10/00001` |
+| number | string unique | `INV/2026/10/00001` (5 digit, urutan di-reset tiap bulan) |
 | customer_id | foreignId | |
 | subscription_id | foreignId | |
 | period_start, period_end | date | |
 | issued_at | date | |
 | due_at | date | |
 | subtotal | unsignedBigInteger | |
-| discount | unsignedBigInteger | default 0 |
-| penalty | unsignedBigInteger | default 0 |
+| discount | unsignedBigInteger | default 0; selalu 0 di v1 (belum ada fitur diskon) |
+| penalty | unsignedBigInteger | default 0; selalu 0 di v1 (denda tidak dipakai) |
 | total | unsignedBigInteger | |
 | status | string | `unpaid`, `paid`, `overdue`, `cancelled` |
 | paid_at | timestamp nullable | |
@@ -140,6 +141,10 @@ Permintaan QRIS ke gateway (satu invoice bisa punya beberapa percobaan).
 | reference | string nullable | ID transaksi gateway, unique jika ada |
 | received_by | foreignId nullable → users | untuk pembayaran manual |
 | notes | text nullable | |
+| review_status | string | `none` (default), `needs_review`, `resolved`; pembayaran anomali ditandai `needs_review` |
+| review_note | text nullable | catatan tinjauan admin |
+
+Satu pembayaran = satu invoice (`invoice_id` wajib dan tunggal), nominal harus sama dengan total invoice.
 
 ### payment_notifications
 Log mentah setiap webhook yang masuk (untuk audit dan idempotensi).
