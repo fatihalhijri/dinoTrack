@@ -2,12 +2,12 @@
 
 Status: ⬜ belum · 🟨 sedang dikerjakan · ✅ selesai
 
-Tahap berikutnya: **Tahap 01** (database, model & enum).
+Tahap berikutnya: **Tahap 02** (role, permission & otorisasi).
 
 | Tahap | Nama | Status | Tanggal | Catatan |
 |---|---|---|---|---|
 | 00 | Setup proyek & tooling | ✅ | 2026-10-04 | Package, kontrak, fake, stub, Money, script composer. Fitur Teams starter kit dibuang (lihat T6). Pint, PHPStan, test hijau |
-| 01 | Database, model & enum | ⬜ | | |
+| 01 | Database, model & enum | ✅ | 2026-10-04 | Skema 14 tabel, 13 model, 8 enum, factory, seeder esensial + demo; Pint, PHPStan, 137 test hijau |
 | 02 | Role, permission & otorisasi | ⬜ | | |
 | 03 | Master data (paket, router, pelanggan) | ⬜ | | |
 | 04 | Tagihan otomatis | ⬜ | | |
@@ -48,9 +48,18 @@ Catat di sini setiap keputusan yang menyimpang dari `docs/` beserta alasannya.
 | 2026-10-04 | T4 `declare_strict_types` diterapkan ke seluruh kode (bukan hanya file baru); `database/migrations` dikecualikan dari Pint | Konsistensi `composer lint`; migration yang sudah di-commit tidak boleh diubah |
 | 2026-10-04 | T5 Enum `PaymentChargeStatus` dibuat di Tahap 00 | Dipakai DTO `PaymentChargeResult`/`GatewayNotification`; Tahap 01 memakainya untuk `payment_charges.status` |
 | 2026-10-04 | T6 Fitur Teams starter kit dibuang (backend, React, migration `drop_teams_feature`); dashboard menjadi `/dashboard` | Arsitektur single-tenant (K1); Teams tidak dipakai |
+| 2026-10-04 | D1 Paket pelanggan hanya lewat subscription aktif (tanpa `customers.package_id`); diagram docs/03 diperbaiki | Menghindari data ganda yang bisa tidak sinkron |
+| 2026-10-04 | D2 `subscriptions.starts_at` nullable (diisi saat aktivasi); satu subscription aktif dijaga generated column `is_current` + unique (`customer_id`, `is_current`) | Pelanggan `pending` belum punya tanggal mulai; aturan dijaga di level database (khusus MySQL) |
+| 2026-10-04 | D3 Kolom tambahan: `invoices.cancelled_at`, `payment_charges.attempt` (unique per invoice), `message_logs.invoice_id`; tabel baru `sequences` | Laporan pembatalan, order_id aman dari race, cek kiriman WA ganda per invoice, kode/nomor berurutan dengan `lockForUpdate` |
+| 2026-10-04 | D4 Index disesuaikan query: (`invoices.status`, `due_at`), `payments.paid_at`/`review_status`, `payment_charges.status`, (`payment_notifications.order_id`, `transaction_status`) | Query isolir, pengingat, laporan, rekonsiliasi, idempotensi webhook |
+| 2026-10-04 | D5 Semua FK `restrictOnDelete` (termasuk ke `users`), kecuali `invoice_items` cascade; morph map alias | Data uang/audit tidak ikut terhapus; fitur hapus akun sendiri perlu ditinjau di Tahap 02 |
+| 2026-10-04 | D6 Enum tambahan `IsolationReason`, `PaymentReviewStatus`, `MessageTemplateKey` | Rule 9 CLAUDE.md: status pakai Enum |
+| 2026-10-04 | D7 `User` memakai `HasRoles`; `RoleSeeder` membuat 3 role tanpa permission; seeder esensial vs `DemoSeeder` (hanya local/testing); demo belum berisi invoice/pelanggan isolated | Permission di Tahap 02; tagihan dibuat generator Tahap 04 |
+| 2026-10-04 | D8 Model memakai atribut `#[Fillable]`/`#[Hidden]`/`#[Scope]` (Laravel 13) mengikuti `User.php`; kolom `date` diserialisasi `Y-m-d` | Konsisten dengan kode starter kit; mencegah tanggal bergeser karena konversi UTC |
 
 ## Utang teknis
 
 Hal yang sengaja ditunda untuk dikerjakan nanti.
 
-Belum ada.
+- `prompts/03` menulis "billing_day = tanggal pasang dibatasi maks 28", bertentangan dengan K2 (billing_day bebas). Putuskan di awal Tahap 03.
+- Fitur hapus akun sendiri (starter kit) akan gagal untuk user yang punya pembayaran/log karena FK `restrict` (D5). Tinjau di Tahap 02.
