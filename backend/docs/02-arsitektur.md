@@ -17,7 +17,10 @@
 ```
 app/
 ├── Actions/                 Satu kelas = satu aksi bisnis, method handle()
-│   ├── Customers/           CreateCustomer, UpdateCustomer, ActivateNewCustomer, TerminateCustomer
+│   ├── Packages/            CreatePackage, UpdatePackage, DeactivatePackage, DeletePackage
+│   ├── Routers/             CreateRouter, UpdateRouter, DeleteRouter, TestRouterConnection
+│   ├── Customers/           CreateCustomer, UpdateCustomer, ChangeCustomerPackage, TerminateCustomer,
+│   │                        ReactivateCustomer, DeleteCustomer, ActivateNewCustomer
 │   ├── Invoices/            GenerateMonthlyInvoices, CancelInvoice, MarkInvoiceOverdue
 │   ├── Payments/            RecordManualPayment, ProcessGatewayNotification
 │   └── Network/             IsolateCustomer, ActivateCustomer

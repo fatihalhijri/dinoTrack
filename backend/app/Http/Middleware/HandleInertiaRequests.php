@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Enums\Permission;
+use App\Enums\Role;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Spatie\Permission\Models\Permission as PermissionModel;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -44,8 +48,31 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $user,
+                'permissions' => fn (): array => $this->permissionsOf($user),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
+    }
+
+    /**
+     * Daftar permission untuk menyembunyikan tombol di frontend; otorisasi tetap di backend.
+     * Admin selalu mendapat semua permission, sejalan dengan Gate::before.
+     *
+     * @return list<string>
+     */
+    private function permissionsOf(?User $user): array
+    {
+        if ($user === null) {
+            return [];
+        }
+
+        if ($user->hasRole(Role::Admin)) {
+            return Permission::values();
+        }
+
+        return array_values($user->getAllPermissions()
+            ->map(fn (PermissionModel $permission): string => $permission->name)
+            ->sort()
+            ->all());
     }
 }

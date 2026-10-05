@@ -12,7 +12,7 @@ use App\Models\Setting;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\MessageTemplateSeeder;
-use Database\Seeders\RoleSeeder;
+use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\SettingSeeder;
 use Spatie\Permission\Models\Role;
 
@@ -41,10 +41,17 @@ it('memberi subscription aktif kepada setiap pelanggan yang belum berhenti', fun
         ->and(Customer::where('status', CustomerStatus::Terminated)->has('activeSubscription')->count())->toBe(0);
 });
 
-it('aman menjalankan ulang seeder esensial tanpa data ganda', function () {
-    $this->seed([RoleSeeder::class, SettingSeeder::class, MessageTemplateSeeder::class]);
+it('memberi permission sesuai role kepada user demo', function () {
+    $this->seed(DatabaseSeeder::class);
 
-    $this->seed([RoleSeeder::class, SettingSeeder::class, MessageTemplateSeeder::class]);
+    expect(User::permission('payments.record')->pluck('email')->sort()->values()->all())
+        ->toBe(['admin@example.com', 'kasir@example.com']);
+});
+
+it('aman menjalankan ulang seeder esensial tanpa data ganda', function () {
+    $this->seed([RolePermissionSeeder::class, SettingSeeder::class, MessageTemplateSeeder::class]);
+
+    $this->seed([RolePermissionSeeder::class, SettingSeeder::class, MessageTemplateSeeder::class]);
 
     expect(Role::count())->toBe(3)
         ->and(Setting::count())->toBe(count(SettingSeeder::DEFAULTS))

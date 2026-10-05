@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Enums\Role;
 use App\Models\Customer;
 use App\Models\Package;
 use App\Models\Router;
@@ -71,11 +72,11 @@ class DemoSeeder extends Seeder
 
     private function seedUsers(): void
     {
-        foreach (RoleSeeder::ROLES as $role) {
+        foreach (Role::cases() as $role) {
             User::factory()
                 ->create([
-                    'name' => ucfirst($role).' Demo',
-                    'email' => "{$role}@example.com",
+                    'name' => $role->label().' Demo',
+                    'email' => "{$role->value}@example.com",
                 ])
                 ->assignRole($role);
         }

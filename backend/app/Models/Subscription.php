@@ -32,6 +32,9 @@ class Subscription extends Model
     /** @use HasFactory<SubscriptionFactory> */
     use HasFactory;
 
+    /** Tanggal 29–31 tidak ada di setiap bulan, sehingga dibulatkan ke 28 (docs/04). */
+    public const int MAX_BILLING_DAY = 28;
+
     /**
      * @return BelongsTo<Customer, $this>
      */

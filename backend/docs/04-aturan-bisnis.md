@@ -113,6 +113,13 @@ terminated ──(berlangganan lagi)──> pending
 ```
 
 - `pending → active` dilakukan admin atau kasir (lihat "Aktivasi pelanggan baru").
+- Router, username PPPoE, dan `billing_day` hanya bisa diubah selama pelanggan
+  `pending`. Setelah terpasang, perubahan itu berarti memindahkan secret di
+  router dan menggeser periode tagihan, sehingga ditolak. Data identitas
+  (nama, nomor WA, alamat, ODP, koordinat, catatan) selalu bisa diubah admin.
+- Pelanggan baru dan ganti paket hanya boleh memilih paket dan router yang
+  aktif. Paket yang dinonaktifkan tetap berlaku untuk subscription yang sudah
+  memakainya.
 - **Isolir otomatis**: pelanggan `active` yang punya invoice `overdue` dengan
   `due_at + grace_days < hari ini`. Mengisi `isolation_reason = overdue`.
   `grace_days` default 3 dan bisa diubah admin menjadi 0 untuk isolir tepat
@@ -134,9 +141,18 @@ terminated ──(berlangganan lagi)──> pending
 - Jika pelanggan sedang `isolated` saat pergantian, hanya `subscriptions` yang
   berubah. Profil router baru diganti saat pelanggan diaktifkan, sehingga
   profil isolir tidak tertimpa.
+- Pelanggan `pending` belum pernah ditagih, sehingga paketnya diganti langsung
+  (`package_id` dan harga terkunci ikut berganti), bukan lewat `next_package_id`.
+- Rencana ganti paket bisa dibatalkan (`next_package_id` dikosongkan). Memilih
+  paket yang sama dengan paket sekarang ditolak; pelanggan `terminated` tidak
+  bisa ganti paket.
 
 ## Berhenti berlangganan
 
+- Hanya pelanggan `active` atau `isolated` yang bisa diberhentikan. Status,
+  `terminated_at`, dan subscription (`ends_at` = hari berhenti, rencana ganti
+  paket dibatalkan) langsung berubah, meskipun router sedang tidak bisa
+  dijangkau, agar tagihan berhenti. Alasan berhenti opsional dan dicatat di log.
 - Pelanggan `terminated` tidak ditagih lagi; invoice `unpaid` yang tersisa
   tetap ada untuk ditagih.
 - Secret PPPoE di router dinonaktifkan (bukan dihapus).
@@ -145,8 +161,20 @@ terminated ──(berlangganan lagi)──> pending
   alur "Aktivasi pelanggan baru".
 - Invoice sisa tetap bisa dibayar lewat link, tetapi pembayarannya tidak
   mengaktifkan layanan.
+- Secret dinonaktifkan lewat job yang dicoba ulang. Saat job berjalan, status
+  dicek ulang: jika pelanggan sudah diaktifkan kembali, secret tidak disentuh.
 - Pelanggan yang sudah punya invoice tidak boleh dihapus (soft delete hanya
   untuk salah input); gunakan `terminated`.
+- Soft delete hanya untuk pelanggan `pending` (salah input atau batal pasang)
+  yang belum punya invoice; subscription-nya ikut diakhiri. Pelanggan yang
+  pernah terpasang harus diberhentikan agar secret di router dinonaktifkan.
+
+## Hapus master data
+
+- Paket yang pernah dirujuk subscription (aktif, riwayat, atau
+  `next_package_id`) tidak bisa dihapus; nonaktifkan sebagai gantinya.
+- Router yang masih punya pelanggan (termasuk yang di-soft-delete) tidak bisa
+  dihapus; nonaktifkan sebagai gantinya.
 
 ## Pesan WhatsApp
 

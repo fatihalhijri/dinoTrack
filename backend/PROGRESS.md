@@ -2,14 +2,14 @@
 
 Status: ⬜ belum · 🟨 sedang dikerjakan · ✅ selesai
 
-Tahap berikutnya: **Tahap 02** (role, permission & otorisasi).
+Tahap berikutnya: **Tahap 04** (tagihan otomatis).
 
 | Tahap | Nama | Status | Tanggal | Catatan |
 |---|---|---|---|---|
 | 00 | Setup proyek & tooling | ✅ | 2026-10-04 | Package, kontrak, fake, stub, Money, script composer. Fitur Teams starter kit dibuang (lihat T6). Pint, PHPStan, test hijau |
 | 01 | Database, model & enum | ✅ | 2026-10-04 | Skema 14 tabel, 13 model, 8 enum, factory, seeder esensial + demo; Pint, PHPStan, 137 test hijau |
-| 02 | Role, permission & otorisasi | ⬜ | | |
-| 03 | Master data (paket, router, pelanggan) | ⬜ | | |
+| 02 | Role, permission & otorisasi | ✅ | 2026-10-05 | Matriks 19 permission × 3 role, 6 policy, `Gate::before` admin, `auth.permissions` di Inertia, registrasi publik dan hapus akun sendiri dibuang; Pint, PHPStan, 249 test hijau |
+| 03 | Master data (paket, router, pelanggan) | ✅ | 2026-10-05 | 14 Action + 9 Form Request + `DisableCustomerSecretJob`, kode pelanggan teruji aman di 4 proses paralel, pesan validasi Bahasa Indonesia; Pint, PHPStan, 383 test hijau |
 | 04 | Tagihan otomatis | ⬜ | | |
 | 05 | Pembayaran manual & QRIS | ⬜ | | |
 | 06 | Mikrotik: isolir & aktivasi | ⬜ | | |
@@ -56,10 +56,34 @@ Catat di sini setiap keputusan yang menyimpang dari `docs/` beserta alasannya.
 | 2026-10-04 | D6 Enum tambahan `IsolationReason`, `PaymentReviewStatus`, `MessageTemplateKey` | Rule 9 CLAUDE.md: status pakai Enum |
 | 2026-10-04 | D7 `User` memakai `HasRoles`; `RoleSeeder` membuat 3 role tanpa permission; seeder esensial vs `DemoSeeder` (hanya local/testing); demo belum berisi invoice/pelanggan isolated | Permission di Tahap 02; tagihan dibuat generator Tahap 04 |
 | 2026-10-04 | D8 Model memakai atribut `#[Fillable]`/`#[Hidden]`/`#[Scope]` (Laravel 13) mengikuti `User.php`; kolom `date` diserialisasi `Y-m-d` | Konsisten dengan kode starter kit; mencegah tanggal bergeser karena konversi UTC |
+| 2026-10-05 | R1 Matriks 19 permission × 3 role disetujui (lihat docs/01); sumber tunggal `Role::permissions()`; `RoleSeeder` diganti nama `RolePermissionSeeder` dan menyinkronkan matriks (perubahan manual di database ditimpa, permission usang dihapus) | Matriks tidak diedit lewat UI di v1; kode jadi satu sumber kebenaran |
+| 2026-10-05 | R2 Policy hanya mengecek permission; syarat status data di Action. Admin lolos lewat `Gate::before` dan tetap di-seed dengan semua permission | `Gate::before` melewati seluruh policy, sehingga aturan status di policy tidak akan berlaku untuk admin |
+| 2026-10-05 | R3 Enum `Permission` dan `Role` (menggantikan string `'admin'` dan `RoleSeeder::ROLES`) | Rule 9 CLAUDE.md; tanpa string tersebar di policy |
+| 2026-10-05 | R4 Registrasi publik Fortify dimatikan: `CreateNewUser`, `RegisterResponse`, halaman `auth/register`, link di login/welcome dihapus | Akun pegawai dibuat admin; user tanpa role tidak boleh bisa masuk sendiri |
+| 2026-10-05 | R5 Fitur hapus akun sendiri dibuang (route, `ProfileController::destroy`, `ProfileDeleteRequest`, komponen `delete-user`) | Akun pegawai adalah jejak audit (FK `restrict`, D5); menyelesaikan utang teknis Tahap 01 |
+| 2026-10-05 | R6 `auth.permissions` (`string[]`) dibagikan ke Inertia; admin selalu mendapat semua permission | Frontend menyembunyikan tombol; otorisasi tetap di backend |
+| 2026-10-05 | M1 `billing_day` adalah input wajib 1–31 saat mendaftar (29–31 dibulatkan ke 28), bukan diturunkan dari tanggal pasang; prompts/03 dianggap usang | Mengikuti K2; saat pendaftaran pelanggan masih `pending` sehingga tanggal pasang belum ada |
+| 2026-10-05 | M2 `DeletePackage` ditolak jika paket dirujuk subscription mana pun (aktif, riwayat, `next_package_id`); `DeactivatePackage` terpisah. Paket/router nonaktif tidak bisa dipilih untuk pelanggan baru atau ganti paket | Pesan jelas sebelum FK `restrict` menolak; subscription lama tetap berjalan |
+| 2026-10-05 | M3 Cakupan tambahan: `DeleteRouter` (ditolak jika masih punya pelanggan, termasuk soft delete), `DeleteCustomer` (ditolak jika sudah punya invoice), `ReactivateCustomer` (`terminated → pending` + subscription baru) | Policy sudah ada; murni master data |
+| 2026-10-05 | M4 `TestRouterConnection` sinkron (menyimpang dari aturan 3 CLAUDE.md); implementasi Mikrotik Tahap 06 wajib timeout pendek. Isolir, aktivasi, dan disable secret tetap lewat job | Admin menunggu hasil tes di layar |
+| 2026-10-05 | M5 `lang/id/validation.php` lengkap + `attributes()` per Form Request; `messages()` hanya untuk aturan khusus | Locale `id`; pesan validasi starter kit ikut berbahasa Indonesia |
+| 2026-10-05 | M6 Pelanggaran aturan bisnis di Action melempar `ValidationException::withMessages()`; Action menerima array hasil `validated()` + `?User $by` | Langsung tampil di form Inertia tanpa kelas exception baru |
+| 2026-10-05 | M7 `UpdateCustomer`: router, username PPPoE, dan `billing_day` hanya bisa diubah selama `pending`. `ChangeCustomerPackage`: `pending` diganti langsung (paket + harga), `active`/`isolated` mengisi `next_package_id`, `null` membatalkan rencana | Setelah terpasang, perubahan itu berarti memindahkan secret router atau menggeser periode; K10 |
+| 2026-10-05 | M8 `TerminateCustomer` hanya dari `active`/`isolated`; status, `terminated_at`, dan subscription (`ends_at`, `next_package_id = null`) langsung berubah dalam transaksi, `DisableCustomerSecretJob` di-dispatch `afterCommit`. `DeleteCustomer` hanya untuk `pending` tanpa invoice dan ikut mengakhiri subscription | Tagihan harus berhenti meski router mati; pelanggan yang pernah terpasang punya secret aktif di router sehingga wajib lewat berhenti |
+| 2026-10-05 | M9 `DisableCustomerSecretJob`: status dicek ulang saat berjalan (dilewati jika pelanggan sudah tidak `terminated`); `RouterUnreachableException` dicoba ulang (5x, backoff 10s–15m); `SecretNotFoundException` langsung gagal; `failed()` menulis `Log::error` + activity log `customer.secret_disable_failed`; `uniqueFor` 1 jam | Job lama tidak boleh menonaktifkan secret pelanggan yang sudah diaktifkan kembali; secret tak ditemukan bisa berarti username salah |
+| 2026-10-05 | M10 Helper `SequenceGenerator` (satu perintah `INSERT … ON DUPLICATE KEY UPDATE` lalu baca dengan `lockForUpdate`, ikut transaksi pemanggil), `ActivityLogger` (properti `changes` [kolom => [lama, baru]], kolom tersembunyi disamarkan `***`), `PhoneNumber::normalize()` (hanya `08` dan `+62` sesuai docs/05) | Pola awal `insertOrIgnore` + `SELECT FOR UPDATE` terbukti deadlock (SQLSTATE 40001) di test 4 proses paralel; versi baru lolos berulang. Password router tidak masuk log |
+| 2026-10-05 | M11 Konvensi lock: aksi yang mengubah pelanggan atau subscription-nya membaca ulang baris pelanggan dengan `lockForUpdate()` di dalam transaksi lalu memvalidasi status di sana; paket/router yang dipilih dibaca dengan `sharedLock()`. Tahap 04 (aktivasi, generator) wajib mengikuti urutan lock yang sama | Mencegah balapan berhenti vs ganti paket, aktivasi vs ganti router, hapus vs terbit invoice |
+| 2026-10-05 | M12 Action mengubah angka input ke integer (`validated()` tidak mengubah tipe) dan hanya mengambil field yang diizinkan (`Arr::only`); Form Request menyediakan accessor bertipe (`packageId()`, `billingDay()`) untuk aksi berparameter `int` | Input form React selalu string; Action juga dipanggil dari job/command sehingga tidak mengandalkan `validated()` |
 
 ## Utang teknis
 
 Hal yang sengaja ditunda untuk dikerjakan nanti.
 
-- `prompts/03` menulis "billing_day = tanggal pasang dibatasi maks 28", bertentangan dengan K2 (billing_day bebas). Putuskan di awal Tahap 03.
-- Fitur hapus akun sendiri (starter kit) akan gagal untuk user yang punya pembayaran/log karena FK `restrict` (D5). Tinjau di Tahap 02.
+- Pelanggan yang di-soft-delete tetap memegang `pppoe_username` di router-nya (unique index mencakup baris terhapus), sehingga data yang salah input tidak bisa didaftarkan ulang dengan username yang sama. Opsi: ubah username saat dihapus, atau hard delete untuk pelanggan tanpa invoice. Putuskan sebelum Tahap 09.
+- "Flag" untuk admin saat job router gagal belum punya kolom/mekanisme; sementara hanya activity log `customer.secret_disable_failed` + log error. Rancang di Tahap 06 bersama isolir/aktivasi.
+- Tahap 06: implementasi `MikrotikNetworkController::testConnection()` wajib memakai timeout pendek dan mengubah semua kegagalan koneksi (termasuk gagal login API) menjadi `false` atau `RouterUnreachableException`; `TestRouterConnection` hanya menangkap exception itu (review T03 #12).
+- Paket bisa dinonaktifkan lewat dua jalan: `DeactivatePackage` (log `package.deactivated`) dan `UpdatePackage` dengan `is_active` (log `package.updated`). Pertimbangkan `ActivatePackage` dan keluarkan `is_active` dari `UpdatePackage` saat controller dibuat di Tahap 09 (review T03 #9).
+- `ReactivateCustomer` mengosongkan `installed_at`; tanggal pasang pertama hanya tersisa di activity log. Putuskan definisi "pelanggan baru" sebelum laporan Tahap 08 (review T03 #10).
+- Aturan validasi bersama memakai dua pola: method statis di `StorePackageRequest`/`StoreRouterRequest` dan trait `app/Concerns/CustomerValidationRules`. Satukan ke pola trait saat menyentuh Form Request lagi (review T03 #11).
+- Hapus user oleh admin (Tahap 09) akan gagal untuk user yang punya pembayaran/log karena FK `restrict` (D5). Action `DeleteUser` perlu menolak dengan pesan jelas (atau menonaktifkan user) dan menolak admin menghapus dirinya sendiri.
+- `npm run check` (vp) melaporkan format markdown di `docs/`, `prompts/`, `PROGRESS.md`, `MULAI-DI-SINI.md`, `pint.json` sejak sebelum Tahap 02; belum dirapikan.

@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Enums\Role;
+use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -49,4 +53,41 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * User baru dengan role dan permission hasil RolePermissionSeeder.
+ */
+function userWithRole(Role $role): User
+{
+    test()->seed(RolePermissionSeeder::class);
+
+    return User::factory()->create()->assignRole($role);
+}
+
+/**
+ * Dataset role × ability untuk test policy. Setiap ability menyebut role yang boleh;
+ * role lain diharapkan ditolak. `viewAny` dan `create` dicek terhadap nama kelas.
+ * Target berupa closure agar model dibuat setelah aplikasi siap (bound dataset Pest).
+ *
+ * @param  class-string<Model>  $modelClass
+ * @param  array<string, list<Role>>  $allowedRoles
+ * @return array<string, array{string, Closure(): (Model|class-string<Model>), Role, bool}>
+ */
+function policyMatrix(string $modelClass, array $allowedRoles): array
+{
+    $dataset = [];
+
+    foreach ($allowedRoles as $ability => $roles) {
+        $target = in_array($ability, ['viewAny', 'create'], true)
+            ? fn (): string => $modelClass
+            : fn (): Model => new $modelClass;
+
+        foreach (Role::cases() as $role) {
+            $allowed = in_array($role, $roles, true);
+            $dataset[sprintf('%s %s %s', $role->value, $allowed ? 'boleh' : 'tidak boleh', $ability)] = [$ability, $target, $role, $allowed];
+        }
+    }
+
+    return $dataset;
 }
