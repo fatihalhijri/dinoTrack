@@ -3,6 +3,10 @@
 declare(strict_types=1);
 
 use App\Enums\Role;
+use App\Models\Customer;
+use App\Models\Invoice;
+use App\Models\Package;
+use App\Models\Subscription;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Database\Eloquent\Model;
@@ -90,4 +94,33 @@ function policyMatrix(string $modelClass, array $allowedRoles): array
     }
 
     return $dataset;
+}
+
+/**
+ * Subscription aktif dengan tanggal tagih, tanggal mulai, dan harga yang pasti untuk test tagihan.
+ */
+function billedSubscription(int $billingDay = 10, string $startsAt = '2026-08-10', int $price = 150_000, ?Customer $customer = null): Subscription
+{
+    $customer ??= Customer::factory()->active()->create(['installed_at' => $startsAt]);
+    $package = Package::factory()->create(['name' => 'Home 20 Mbps', 'price' => $price]);
+
+    return Subscription::factory()->for($customer)->for($package)->create([
+        'billing_day' => $billingDay,
+        'starts_at' => $startsAt,
+        'price' => $price,
+    ]);
+}
+
+/**
+ * Invoice yang sudah ada untuk satu periode subscription.
+ *
+ * @param  array<string, mixed>  $attributes
+ */
+function existingInvoice(Subscription $subscription, string $periodStart, string $periodEnd, array $attributes = []): Invoice
+{
+    return Invoice::factory()->for($subscription)->create([
+        'period_start' => $periodStart,
+        'period_end' => $periodEnd,
+        ...$attributes,
+    ]);
 }

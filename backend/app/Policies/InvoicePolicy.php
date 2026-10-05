@@ -30,6 +30,15 @@ class InvoicePolicy
     }
 
     /**
+     * Menerbitkan ulang periode yang invoice-nya dibatalkan. Memakai permission yang sama dengan
+     * pembatalan agar matriks permission yang disetujui tidak berubah.
+     */
+    public function reissue(User $user, Invoice $invoice): bool
+    {
+        return $user->checkPermissionTo(Permission::InvoicesCancel);
+    }
+
+    /**
      * Mengirim ulang tagihan ke WhatsApp pelanggan.
      */
     public function resend(User $user, Invoice $invoice): bool

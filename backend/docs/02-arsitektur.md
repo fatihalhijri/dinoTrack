@@ -21,7 +21,8 @@ app/
 │   ├── Routers/             CreateRouter, UpdateRouter, DeleteRouter, TestRouterConnection
 │   ├── Customers/           CreateCustomer, UpdateCustomer, ChangeCustomerPackage, TerminateCustomer,
 │   │                        ReactivateCustomer, DeleteCustomer, ActivateNewCustomer
-│   ├── Invoices/            GenerateMonthlyInvoices, CancelInvoice, MarkInvoiceOverdue
+│   ├── Invoices/            GenerateInvoiceForSubscription, GenerateMonthlyInvoices,
+│   │                        IssueInvoice, MarkOverdueInvoices, CancelInvoice, ReissueInvoice
 │   ├── Payments/            RecordManualPayment, ProcessGatewayNotification
 │   └── Network/             IsolateCustomer, ActivateCustomer
 ├── Contracts/               Interface integrasi
@@ -41,7 +42,8 @@ app/
 │   └── Requests/            Form Request validasi
 ├── Models/
 ├── Policies/
-├── Support/                 Helper murni (Money, InvoiceNumberGenerator)
+├── Support/                 Helper (Money, BillingPeriod, ProrataCalculator, InvoiceNumberGenerator,
+│                            SequenceGenerator, SettingsRepository, ActivityLogger, PhoneNumber)
 └── Data/                    DTO sederhana (readonly class) bila perlu
 tests/
 ├── Feature/                 Alur end-to-end (HTTP, job, scheduler)

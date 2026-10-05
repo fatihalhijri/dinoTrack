@@ -29,7 +29,19 @@
    dimulai tetapi belum punya invoice, bukan hanya yang jatuh tagih hari ini.
    Aman dijalankan ulang (dijaga unique `subscription_id` + `period_start`)
    sehingga server yang mati sehari tidak menghilangkan tagihan.
+   - Periode berikutnya dihitung dari `period_end` invoice terakhir
+     subscription itu (termasuk invoice `cancelled`). Periode yang dibatalkan
+     tidak ditagih ulang otomatis; admin bisa menerbitkannya ulang (lihat
+     "Status invoice").
+   - Subscription aktif yang **belum punya invoice sama sekali** (data lama
+     atau migrasi) hanya ditagih periode berjalan, tidak ditagih mundur sampai
+     tanggal mulainya. Pelanggan baru tidak terpengaruh karena tagihan
+     pertamanya terbit saat aktivasi.
+   - Invoice terbit pada hari generator benar-benar membuatnya (`issued_at`),
+     sehingga invoice catch-up tetap mendapat jatuh tempo penuh:
+     `due_at = issued_at + due_days`.
 7. Nomor invoice `INV/YYYY/MM/NNNNN` (5 digit); urutan di-reset tiap bulan.
+   Tahun dan bulan mengikuti `issued_at`.
 8. Diskon belum ada di v1: `invoices.discount` selalu 0.
 
 ## Aktivasi pelanggan baru
@@ -43,6 +55,12 @@
      scheduler.
 - Internet langsung aktif tanpa menunggu tagihan pertama dibayar; tagihan
   mengikuti jatuh tempo dan toleransi seperti biasa.
+- Tanggal pasang default hari ini. Boleh diisi mundur, tetapi tidak di masa
+  depan dan tidak sebelum tanggal pendaftaran pelanggan. Jika tanggal pasang
+  mundur melewati `billing_day`, periode berikutnya ikut ditagih saat itu juga.
+- Aktivasi ditolak jika router pelanggan nonaktif.
+- Status dan tagihan pertama langsung berubah dalam transaksi; pengaktifan
+  secret di router dijalankan lewat job yang dicoba ulang (Tahap 06).
 
 ## Prorata periode pertama
 
@@ -57,8 +75,14 @@ tagihan pertama = harga_paket × (jumlah hari dari tanggal pasang
                   s.d. akhir periode pertama) ÷ jumlah hari periode penuh
 ```
 
-Dibulatkan **ke atas ke kelipatan Rp100**. Contoh: paket Rp150.000, periode
-penuh 30 hari, dipakai 12 hari → 150.000 × 12 ÷ 30 = 60.000.
+"Periode penuh" adalah periode utuh (`billing_day` s.d. sehari sebelum
+`billing_day` berikutnya) yang memuat tanggal pasang. Contoh: `billing_day`
+10, pasang 25 Oktober → periode pertama 25 Okt–9 Nov (16 hari), periode
+penuh 10 Okt–9 Nov (31 hari).
+
+Dibulatkan **ke atas ke kelipatan Rp100**, dan tidak pernah melebihi harga
+paket sebulan. Contoh: paket Rp150.000, periode penuh 30 hari, dipakai 12
+hari → 150.000 × 12 ÷ 30 = 60.000.
 
 Jika `false`, tagihan pertama sebesar harga paket penuh.
 
@@ -71,6 +95,23 @@ unpaid / overdue ──(dibatalkan admin)──> cancelled
 ```
 
 - `paid` dan `cancelled` adalah status akhir, tidak bisa berubah lagi.
+- Invoice menjadi `overdue` sehari setelah jatuh tempo (`due_at < hari ini`);
+  pada hari `due_at` masih `unpaid` dan masih bisa dibayar. Ditandai oleh
+  scheduler harian 01:00.
+- Pembatalan wajib menyertakan alasan (minimal 5 karakter) dan dicatat di log.
+- **Terbit ulang** (admin): periode yang invoice-nya `cancelled` bisa diterbitkan
+  ulang selama belum ada invoice aktif untuk periode itu. Invoice baru terbit
+  hari ini (nomor dan jatuh tempo baru), nominal dihitung ulang dari
+  subscription saat ini (termasuk prorata periode pertama). Invoice lama tetap
+  `cancelled`. Boleh untuk pelanggan `terminated`.
+- Jika pembatalan karena salah input paket, admin menyertakan **paket
+  koreksi**: paket dan harga subscription langsung dikoreksi untuk periode itu
+  dan seterusnya. Ini pengecualian dari aturan "Ganti paket" (yang selalu
+  mulai periode berikutnya) dan hanya untuk koreksi salah input.
+- Jika invoice yang dibatalkan membuat pelanggan yang diisolir otomatis
+  (`isolation_reason = overdue`) tidak lagi punya tunggakan lewat toleransi,
+  pelanggan diaktifkan otomatis, sama seperti setelah pembayaran (diterapkan
+  di Tahap 06).
 - Pembayaran harus **sama dengan** total invoice. Pembayaran sebagian, bayar
   di muka beberapa bulan, kelebihan bayar, dan saldo deposit tidak didukung di v1.
 - **Satu pembayaran = satu invoice.** Pelanggan yang menunggak beberapa bulan

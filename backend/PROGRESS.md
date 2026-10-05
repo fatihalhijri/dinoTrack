@@ -2,7 +2,7 @@
 
 Status: ⬜ belum · 🟨 sedang dikerjakan · ✅ selesai
 
-Tahap berikutnya: **Tahap 04** (tagihan otomatis).
+Tahap berikutnya: **Tahap 05** (pembayaran manual & QRIS).
 
 | Tahap | Nama | Status | Tanggal | Catatan |
 |---|---|---|---|---|
@@ -10,7 +10,7 @@ Tahap berikutnya: **Tahap 04** (tagihan otomatis).
 | 01 | Database, model & enum | ✅ | 2026-10-04 | Skema 14 tabel, 13 model, 8 enum, factory, seeder esensial + demo; Pint, PHPStan, 137 test hijau |
 | 02 | Role, permission & otorisasi | ✅ | 2026-10-05 | Matriks 19 permission × 3 role, 6 policy, `Gate::before` admin, `auth.permissions` di Inertia, registrasi publik dan hapus akun sendiri dibuang; Pint, PHPStan, 249 test hijau |
 | 03 | Master data (paket, router, pelanggan) | ✅ | 2026-10-05 | 14 Action + 9 Form Request + `DisableCustomerSecretJob`, kode pelanggan teruji aman di 4 proses paralel, pesan validasi Bahasa Indonesia; Pint, PHPStan, 383 test hijau |
-| 04 | Tagihan otomatis | ⬜ | | |
+| 04 | Tagihan otomatis | ✅ | 2026-10-05 | Generator catch-up tanpa duplikat, prorata integer, nomor invoice per bulan, overdue, batal + terbit ulang, aktivasi pelanggan dengan tagihan pertama, jadwal 00:10/01:00; Pint, PHPStan, 518 test hijau |
 | 05 | Pembayaran manual & QRIS | ⬜ | | |
 | 06 | Mikrotik: isolir & aktivasi | ⬜ | | |
 | 07 | Notifikasi WhatsApp | ⬜ | | |
@@ -74,6 +74,18 @@ Catat di sini setiap keputusan yang menyimpang dari `docs/` beserta alasannya.
 | 2026-10-05 | M10 Helper `SequenceGenerator` (satu perintah `INSERT … ON DUPLICATE KEY UPDATE` lalu baca dengan `lockForUpdate`, ikut transaksi pemanggil), `ActivityLogger` (properti `changes` [kolom => [lama, baru]], kolom tersembunyi disamarkan `***`), `PhoneNumber::normalize()` (hanya `08` dan `+62` sesuai docs/05) | Pola awal `insertOrIgnore` + `SELECT FOR UPDATE` terbukti deadlock (SQLSTATE 40001) di test 4 proses paralel; versi baru lolos berulang. Password router tidak masuk log |
 | 2026-10-05 | M11 Konvensi lock: aksi yang mengubah pelanggan atau subscription-nya membaca ulang baris pelanggan dengan `lockForUpdate()` di dalam transaksi lalu memvalidasi status di sana; paket/router yang dipilih dibaca dengan `sharedLock()`. Tahap 04 (aktivasi, generator) wajib mengikuti urutan lock yang sama | Mencegah balapan berhenti vs ganti paket, aktivasi vs ganti router, hapus vs terbit invoice |
 | 2026-10-05 | M12 Action mengubah angka input ke integer (`validated()` tidak mengubah tipe) dan hanya mengambil field yang diizinkan (`Arr::only`); Form Request menyediakan accessor bertipe (`packageId()`, `billingDay()`) untuk aksi berparameter `int` | Input form React selalu string; Action juga dipanggil dari job/command sehingga tidak mengandalkan `validated()` |
+| 2026-10-05 | B1 Denda tidak dikerjakan meskipun prompts/04 memintanya (butir 5 dan 8); `MarkOverdueInvoices` hanya mengubah status, test "denda hanya sekali" diganti "penalty tetap 0" | K5 dan docs/04: denda tidak dipakai di v1 |
+| 2026-10-05 | B2 `ActivateNewCustomer` dikerjakan di Tahap 04 (tidak ada di prompt mana pun): status `active`, `installed_at`, `starts_at`, dan tagihan pertama dalam satu transaksi. Tanggal pasang default hari ini, boleh mundur (≥ tanggal daftar, ≤ hari ini) dengan catch-up periode berikutnya; ditolak jika router nonaktif | K3 mewajibkan tagihan pertama terbit saat aktivasi; prorata adalah inti Tahap 04 |
+| 2026-10-05 | B3 Catch-up dihitung dari `period_end` invoice terakhir; subscription tanpa invoice sama sekali hanya ditagih periode berjalan (aktivasi memakai `fromFirstPeriod`) | Mencegah 22 pelanggan demo / data migrasi ditagih mundur sampai 12 bulan |
+| 2026-10-05 | B4 `issued_at` = hari invoice dibuat, `due_at = issued_at + due_days`, bulan nomor invoice mengikuti `issued_at` | Invoice catch-up tidak langsung overdue karena server sempat mati |
+| 2026-10-05 | B5 Periode penuh untuk prorata = periode utuh yang memuat tanggal pasang; hasil prorata dibatasi maksimal harga sebulan. Perhitungan integer (`BillingPeriod` + `ProrataCalculator`, keduanya diuji unit tanpa framework) | Menghilangkan ambiguitas "jumlah hari periode penuh" di docs/04; aturan uang integer |
+| 2026-10-05 | B6 Invoice `overdue` jika `due_at < hari ini`; update memakai syarat `status = unpaid` agar tidak menimpa invoice yang lunas bersamaan | Hari jatuh tempo masih boleh dibayar; aman terhadap pembayaran Tahap 05 |
+| 2026-10-05 | B7 `GenerateInvoiceForSubscription` mengunci baris pelanggan (M11), menganggap pelanggaran unique sebagai "sudah ditagih" hanya jika invoice periode itu memang ada (bentrok nomor invoice tetap galat); satu subscription gagal tidak menghentikan yang lain dan command keluar dengan kode gagal | Generator ganda/bersamaan tanpa duplikat, tanpa menyembunyikan galat nyata |
+| 2026-10-05 | B8 `SettingsRepository` dengan cache selamanya yang dibersihkan event `saved`/`deleted` model `Setting`; `SettingSeeder::DEFAULTS` menunjuk ke `SettingsRepository::DEFAULTS` | Satu sumber nilai default; perubahan pengaturan admin langsung berlaku |
+| 2026-10-05 | B9 Opsi `--date` pada `billing:generate-invoices` dan `billing:mark-overdue` hanya untuk simulasi dan ditolak di production | Di production catch-up sudah menangani hari yang terlewat; mencegah invoice bertanggal salah |
+| 2026-10-05 | B11 Hasil review T04: jadwal `withoutOverlapping(60)`; kegagalan generator dicatat `Log::error` dengan `subscription_id`/`customer_id`/periode dan ID-nya ditampilkan command; minimal 5 karakter alasan pembatalan dijaga di `CancelInvoice` (konstanta dipakai Form Request); `SettingsRepository` di-`scoped` dengan nilai tersimpan per request/job (`flush()` dipanggil event model); log `invoice.issued` saat aktivasi mencatat pelakunya | Lock 24 jam bawaan bisa membuat jadwal esok hari terlewat; admin perlu tahu subscription mana yang gagal; aturan tidak bergantung pada HTTP |
+| 2026-10-05 | B12 Terbit ulang invoice yang dibatalkan (review T04 #3, opsi a): migration baru menambah kolom generated `invoices.billed_period_start` dan mengganti unique (`subscription_id`, `period_start`) menjadi (`subscription_id`, `billed_period_start`). `ReissueInvoice` (admin, permission `invoices.cancel`) menghitung ulang nominal dari subscription, boleh menyertakan paket koreksi yang langsung mengubah paket/harga subscription (pengecualian K10, log `subscription.package_corrected`); boleh untuk pelanggan `terminated`. Generator tetap tidak menagih ulang periode yang dibatalkan secara otomatis. Pembuatan invoice dipindah ke `IssueInvoice` yang dipakai generator dan terbit ulang | Tanpa jalan terbit ulang, invoice yang dibatalkan karena salah input berarti pelanggan gratis satu periode; harga subscription terkunci sehingga koreksi paket perlu jalur khusus |
+| 2026-10-05 | B10 Pembatalan invoice overdue yang membuat pelanggan isolir-otomatis bebas tunggakan → aktivasi otomatis (aturan ditulis di docs/04, pemanggilannya di Tahap 06) | Menyamakan dengan aturan aktivasi setelah pembayaran |
 
 ## Utang teknis
 
@@ -86,4 +98,11 @@ Hal yang sengaja ditunda untuk dikerjakan nanti.
 - `ReactivateCustomer` mengosongkan `installed_at`; tanggal pasang pertama hanya tersisa di activity log. Putuskan definisi "pelanggan baru" sebelum laporan Tahap 08 (review T03 #10).
 - Aturan validasi bersama memakai dua pola: method statis di `StorePackageRequest`/`StoreRouterRequest` dan trait `app/Concerns/CustomerValidationRules`. Satukan ke pola trait saat menyentuh Form Request lagi (review T03 #11).
 - Hapus user oleh admin (Tahap 09) akan gagal untuk user yang punya pembayaran/log karena FK `restrict` (D5). Action `DeleteUser` perlu menolak dengan pesan jelas (atau menonaktifkan user) dan menolak admin menghapus dirinya sendiri.
+- Tahap 06: `ActivateNewCustomer` belum mengaktifkan secret PPPoE di router; tambahkan dispatch `ActivateCustomerJob` (profil paket) setelah commit.
+- Tahap 06: penerapan ganti paket (`subscription.package_applied`) untuk pelanggan `active` belum mengubah profil PPPoE di router; pelanggan `isolated` memang hanya berubah di subscription (profil diganti saat diaktifkan).
+- Tahap 06: koreksi paket saat terbit ulang (`subscription.package_corrected`) belum mengubah profil PPPoE di router untuk pelanggan `active`.
+- Test `TerminateCustomer` (Tahap 03) memakai `Queue::fake()` yang mengabaikan `afterCommit()`, sehingga belum membuktikan job tidak terkirim saat rollback; pola test dengan queue `sync` + `Queue::before()` ada di `ActivateNewCustomerTest`.
+- Tahap 06: `CancelInvoice` belum memicu aktivasi otomatis untuk pelanggan isolir-otomatis yang tidak lagi menunggak (B10).
+- Tahap 07: `SendInvoiceNotificationJob::handle()` masih kosong (sudah di-dispatch `afterCommit` dari generator dan aktivasi).
+- Tahap 05: saat pembayaran QRIS ada, `CancelInvoice` perlu menandai charge `pending` invoice itu agar pembayaran yang tetap masuk diperlakukan sebagai anomali.
 - `npm run check` (vp) melaporkan format markdown di `docs/`, `prompts/`, `PROGRESS.md`, `MULAI-DI-SINI.md`, `pint.json` sejak sebelum Tahap 02; belum dirapikan.

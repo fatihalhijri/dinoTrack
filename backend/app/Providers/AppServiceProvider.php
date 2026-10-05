@@ -25,6 +25,7 @@ use App\Models\User;
 use App\Services\Messaging\FonnteMessageSender;
 use App\Services\Network\MikrotikNetworkController;
 use App\Services\Payment\MidtransPaymentGateway;
+use App\Support\SettingsRepository;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Date;
@@ -41,6 +42,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->scoped(SettingsRepository::class);
         $this->app->bind(PaymentGateway::class, MidtransPaymentGateway::class);
         $this->app->bind(NetworkController::class, MikrotikNetworkController::class);
         $this->app->bind(MessageSender::class, fn (): MessageSender => match (config('services.whatsapp.driver')) {

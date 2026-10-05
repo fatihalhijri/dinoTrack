@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $subscription_id
  * @property CarbonImmutable $period_start
  * @property CarbonImmutable $period_end
+ * @property CarbonImmutable|null $billed_period_start kolom generated: period_start jika tidak dibatalkan; jangan diisi aplikasi
  * @property CarbonImmutable $issued_at
  * @property CarbonImmutable $due_at
  * @property int $subtotal
@@ -130,6 +131,7 @@ class Invoice extends Model
         return [
             'period_start' => 'date:Y-m-d',
             'period_end' => 'date:Y-m-d',
+            'billed_period_start' => 'date:Y-m-d',
             'issued_at' => 'date:Y-m-d',
             'due_at' => 'date:Y-m-d',
             'subtotal' => 'integer',

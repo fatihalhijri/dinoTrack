@@ -112,6 +112,7 @@ baru; subscription lama tetap sebagai riwayat.
 | customer_id | foreignId | sama dengan `subscription.customer_id` (denormalisasi untuk query) |
 | subscription_id | foreignId | |
 | period_start, period_end | date | |
+| billed_period_start | date nullable, **generated** | `IF(status <> 'cancelled', period_start, NULL)`; jangan diisi aplikasi (migration `2026_10_05_173334`) |
 | issued_at | date | |
 | due_at | date | |
 | subtotal | unsignedBigInteger | |
@@ -123,7 +124,10 @@ baru; subscription lama tetap sebagai riwayat.
 | cancelled_at | timestamp nullable | |
 | cancelled_reason | string nullable | |
 
-Unique: (`subscription_id`, `period_start`) — mencegah tagihan ganda.
+Unique: (`subscription_id`, `billed_period_start`) — mencegah tagihan ganda
+untuk invoice yang tidak dibatalkan, tetapi mengizinkan periode yang
+invoice-nya `cancelled` diterbitkan ulang (sebelumnya unique
+(`subscription_id`, `period_start`), kini index biasa).
 Index: (`status`, `due_at`) — untuk query overdue/isolir/pengingat dan juga
 query berdasarkan `status` saja.
 
