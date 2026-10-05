@@ -239,7 +239,7 @@ condition.
 
 ## Seeder
 
-- **Esensial** (aman diulang, boleh di production): `RoleSeeder`,
+- **Esensial** (aman diulang, boleh di production): `RolePermissionSeeder`,
   `SettingSeeder`, `MessageTemplateSeeder`.
 - **Demo** (`DemoSeeder`, hanya `local`/`testing`): user `admin@example.com`,
   `kasir@example.com`, `teknisi@example.com` (password `password`), 4 paket,

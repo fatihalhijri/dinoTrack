@@ -2,13 +2,13 @@
 
 Status: ⬜ belum · 🟨 sedang dikerjakan · ✅ selesai
 
-Tahap berikutnya: **Tahap 02** (role, permission & otorisasi).
+Tahap berikutnya: **Tahap 03** (master data: paket, router, pelanggan).
 
 | Tahap | Nama | Status | Tanggal | Catatan |
 |---|---|---|---|---|
 | 00 | Setup proyek & tooling | ✅ | 2026-10-04 | Package, kontrak, fake, stub, Money, script composer. Fitur Teams starter kit dibuang (lihat T6). Pint, PHPStan, test hijau |
 | 01 | Database, model & enum | ✅ | 2026-10-04 | Skema 14 tabel, 13 model, 8 enum, factory, seeder esensial + demo; Pint, PHPStan, 137 test hijau |
-| 02 | Role, permission & otorisasi | ⬜ | | |
+| 02 | Role, permission & otorisasi | ✅ | 2026-10-05 | Matriks 19 permission × 3 role, 6 policy, `Gate::before` admin, `auth.permissions` di Inertia, registrasi publik dan hapus akun sendiri dibuang; Pint, PHPStan, 249 test hijau |
 | 03 | Master data (paket, router, pelanggan) | ⬜ | | |
 | 04 | Tagihan otomatis | ⬜ | | |
 | 05 | Pembayaran manual & QRIS | ⬜ | | |
@@ -56,10 +56,17 @@ Catat di sini setiap keputusan yang menyimpang dari `docs/` beserta alasannya.
 | 2026-10-04 | D6 Enum tambahan `IsolationReason`, `PaymentReviewStatus`, `MessageTemplateKey` | Rule 9 CLAUDE.md: status pakai Enum |
 | 2026-10-04 | D7 `User` memakai `HasRoles`; `RoleSeeder` membuat 3 role tanpa permission; seeder esensial vs `DemoSeeder` (hanya local/testing); demo belum berisi invoice/pelanggan isolated | Permission di Tahap 02; tagihan dibuat generator Tahap 04 |
 | 2026-10-04 | D8 Model memakai atribut `#[Fillable]`/`#[Hidden]`/`#[Scope]` (Laravel 13) mengikuti `User.php`; kolom `date` diserialisasi `Y-m-d` | Konsisten dengan kode starter kit; mencegah tanggal bergeser karena konversi UTC |
+| 2026-10-05 | R1 Matriks 19 permission × 3 role disetujui (lihat docs/01); sumber tunggal `Role::permissions()`; `RoleSeeder` diganti nama `RolePermissionSeeder` dan menyinkronkan matriks (perubahan manual di database ditimpa, permission usang dihapus) | Matriks tidak diedit lewat UI di v1; kode jadi satu sumber kebenaran |
+| 2026-10-05 | R2 Policy hanya mengecek permission; syarat status data di Action. Admin lolos lewat `Gate::before` dan tetap di-seed dengan semua permission | `Gate::before` melewati seluruh policy, sehingga aturan status di policy tidak akan berlaku untuk admin |
+| 2026-10-05 | R3 Enum `Permission` dan `Role` (menggantikan string `'admin'` dan `RoleSeeder::ROLES`) | Rule 9 CLAUDE.md; tanpa string tersebar di policy |
+| 2026-10-05 | R4 Registrasi publik Fortify dimatikan: `CreateNewUser`, `RegisterResponse`, halaman `auth/register`, link di login/welcome dihapus | Akun pegawai dibuat admin; user tanpa role tidak boleh bisa masuk sendiri |
+| 2026-10-05 | R5 Fitur hapus akun sendiri dibuang (route, `ProfileController::destroy`, `ProfileDeleteRequest`, komponen `delete-user`) | Akun pegawai adalah jejak audit (FK `restrict`, D5); menyelesaikan utang teknis Tahap 01 |
+| 2026-10-05 | R6 `auth.permissions` (`string[]`) dibagikan ke Inertia; admin selalu mendapat semua permission | Frontend menyembunyikan tombol; otorisasi tetap di backend |
 
 ## Utang teknis
 
 Hal yang sengaja ditunda untuk dikerjakan nanti.
 
 - `prompts/03` menulis "billing_day = tanggal pasang dibatasi maks 28", bertentangan dengan K2 (billing_day bebas). Putuskan di awal Tahap 03.
-- Fitur hapus akun sendiri (starter kit) akan gagal untuk user yang punya pembayaran/log karena FK `restrict` (D5). Tinjau di Tahap 02.
+- Hapus user oleh admin (Tahap 09) akan gagal untuk user yang punya pembayaran/log karena FK `restrict` (D5). Action `DeleteUser` perlu menolak dengan pesan jelas (atau menonaktifkan user) dan menolak admin menghapus dirinya sendiri.
+- `npm run check` (vp) melaporkan format markdown di `docs/`, `prompts/`, `PROGRESS.md`, `MULAI-DI-SINI.md`, `pint.json` sejak sebelum Tahap 02; belum dirapikan.

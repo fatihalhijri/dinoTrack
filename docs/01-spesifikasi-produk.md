@@ -24,10 +24,45 @@ diaktifkan otomatis sesuai status pembayaran.
 | **kasir** | Lihat pelanggan dan tagihan, tandai pelanggan baru "terpasang" (aktivasi), catat pembayaran manual, kirim ulang tagihan |
 | **teknisi** | Lihat data pelanggan dan status koneksi, tambah pelanggan baru (status `pending`). Tidak bisa mengaktifkan pelanggan |
 
+### Matriks permission (disetujui 2026-10-05)
+
+Sumber tunggal di kode: `App\Enums\Role::permissions()`, disinkronkan ke
+database oleh `RolePermissionSeeder` (perubahan manual di database ditimpa saat
+seeder dijalankan ulang). Admin juga melewati semua pengecekan lewat
+`Gate::before`.
+
+| Permission | Arti | admin | kasir | teknisi |
+|---|---|:-:|:-:|:-:|
+| `customers.view` | Lihat pelanggan, riwayat, status koneksi | ✅ | ✅ | ✅ |
+| `customers.create` | Tambah pelanggan (`pending`) | ✅ | – | ✅ |
+| `customers.update` | Ubah data pelanggan | ✅ | – | – |
+| `customers.delete` | Soft delete karena salah input | ✅ | – | – |
+| `customers.activate` | Tandai "terpasang" (`pending → active`) | ✅ | ✅ | – |
+| `customers.terminate` | Berhentikan dan aktifkan kembali (`terminated → pending`) | ✅ | – | – |
+| `customers.isolate` | Isolir / buka isolir manual | ✅ | – | – |
+| `packages.view` | Lihat paket | ✅ | ✅ | ✅ |
+| `packages.manage` | CRUD dan nonaktifkan paket | ✅ | – | – |
+| `routers.manage` | CRUD router dan tes koneksi | ✅ | – | – |
+| `invoices.view` | Lihat tagihan | ✅ | ✅ | – |
+| `invoices.cancel` | Batalkan tagihan (dengan alasan) | ✅ | – | – |
+| `invoices.resend` | Kirim ulang tagihan via WA | ✅ | ✅ | – |
+| `payments.view` | Lihat pembayaran | ✅ | ✅ | – |
+| `payments.record` | Catat pembayaran manual | ✅ | ✅ | – |
+| `payments.review` | Tinjau pembayaran anomali (`resolved`) | ✅ | – | – |
+| `reports.view` | Laporan dan dashboard pendapatan | ✅ | – | – |
+| `settings.manage` | Pengaturan usaha, aturan tagihan, template WA | ✅ | – | – |
+| `users.manage` | Manajemen user dan role | ✅ | – | – |
+
+Policy hanya mengecek permission. Syarat status data (misalnya invoice `paid`
+tidak bisa dibatalkan, paket yang dipakai tidak bisa dihapus) dijaga di Action
+agar tetap berlaku untuk admin.
+
 ## Modul dan fitur
 
 ### 1. Autentikasi & pengguna
 - Login, logout, lupa password (dari starter kit)
+- Tidak ada registrasi publik dan tidak ada hapus akun sendiri; akun pegawai
+  dibuat dan dikelola admin
 - Manajemen user dan role (admin saja)
 
 ### 2. Paket internet

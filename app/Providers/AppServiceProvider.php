@@ -7,6 +7,7 @@ namespace App\Providers;
 use App\Contracts\MessageSender;
 use App\Contracts\NetworkController;
 use App\Contracts\PaymentGateway;
+use App\Enums\Role;
 use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\Invoice;
@@ -28,6 +29,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use InvalidArgumentException;
@@ -54,6 +56,15 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureMorphMap();
+        $this->configureAuthorization();
+    }
+
+    /**
+     * Admin boleh melakukan semua aksi. Mengembalikan null (bukan false) agar role lain tetap dicek policy.
+     */
+    protected function configureAuthorization(): void
+    {
+        Gate::before(fn (User $user): ?bool => $user->hasRole(Role::Admin) ? true : null);
     }
 
     /**
