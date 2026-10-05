@@ -2,12 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Data\GatewayNotification;
+use App\Enums\PaymentChargeStatus;
 use App\Enums\Role;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Package;
+use App\Models\PaymentCharge;
 use App\Models\Subscription;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -123,4 +127,48 @@ function existingInvoice(Subscription $subscription, string $periodStart, string
         'period_end' => $periodEnd,
         ...$attributes,
     ]);
+}
+
+/**
+ * Payload notifikasi Midtrans bertanda tangan dengan Server Key test.
+ *
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function signedMidtransPayload(array $overrides = [], string $serverKey = 'SB-Mid-server-test'): array
+{
+    $payload = [
+        'order_id' => 'INV20261000001-1',
+        'status_code' => '200',
+        'gross_amount' => '150000.00',
+        'transaction_status' => 'settlement',
+        'transaction_id' => 'trx-123',
+        'fraud_status' => 'accept',
+        'settlement_time' => '2026-10-05 10:03:00',
+        ...$overrides,
+    ];
+    $payload['signature_key'] = hash('sha512', $payload['order_id'].$payload['status_code'].$payload['gross_amount'].$serverKey);
+
+    return $payload;
+}
+
+/**
+ * Notifikasi gateway yang sudah diurai untuk satu charge; nominal default = nominal charge.
+ */
+function gatewayNotification(
+    PaymentCharge $charge,
+    ?PaymentChargeStatus $status = PaymentChargeStatus::Settled,
+    ?int $grossAmount = null,
+    string $transactionStatus = 'settlement',
+    ?string $reference = 'trx-1',
+    ?CarbonImmutable $paidAt = null,
+): GatewayNotification {
+    return new GatewayNotification(
+        orderId: $charge->order_id,
+        status: $status,
+        grossAmount: $grossAmount ?? $charge->amount,
+        reference: $reference,
+        transactionStatus: $transactionStatus,
+        paidAt: $paidAt,
+    );
 }

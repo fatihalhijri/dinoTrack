@@ -32,14 +32,14 @@ final class FakePaymentGateway implements PaymentGateway
         return $this;
     }
 
-    public function createQrisCharge(Invoice $invoice): PaymentChargeResult
+    public function createQrisCharge(Invoice $invoice, string $orderId): PaymentChargeResult
     {
-        $this->record(__FUNCTION__, [$invoice]);
+        $this->record(__FUNCTION__, [$invoice, $orderId]);
 
         $sequence = ++$this->chargeSequence;
 
         return new PaymentChargeResult(
-            orderId: "FAKE-{$invoice->getKey()}-{$sequence}",
+            orderId: $orderId,
             amount: (int) $invoice->getAttribute('total'),
             status: PaymentChargeStatus::Pending,
             qrString: "fake-qr-{$sequence}",
@@ -65,6 +65,7 @@ final class FakePaymentGateway implements PaymentGateway
             grossAmount: (int) ($payload['gross_amount'] ?? 0),
             reference: (string) ($payload['transaction_id'] ?? 'fake-reference'),
             payload: $payload,
+            transactionStatus: 'settlement',
         );
     }
 
@@ -76,6 +77,7 @@ final class FakePaymentGateway implements PaymentGateway
             orderId: $orderId,
             status: PaymentChargeStatus::Pending,
             grossAmount: 0,
+            transactionStatus: 'pending',
         );
     }
 }

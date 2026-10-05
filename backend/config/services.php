@@ -37,6 +37,10 @@ return [
         'base_url' => env('MIDTRANS_IS_PRODUCTION', false)
             ? 'https://api.midtrans.com'
             : 'https://api.sandbox.midtrans.com',
+        'connect_timeout' => 5,
+        'timeout' => 15,
+        // Dikirim sebagai custom_expiry karena respons charge QRIS tidak mendokumentasikan expiry_time.
+        'qris_expiry_minutes' => 15,
     ],
 
     'whatsapp' => [

@@ -127,13 +127,33 @@ unpaid / overdue ──(dibatalkan admin)──> cancelled
   atau `cancelled`.
 - Charge QRIS baru dibuat hanya jika charge sebelumnya sudah `expired` atau
   `failed`. Membuka halaman berulang kali memakai ulang charge `pending`
-  yang masih berlaku.
+  yang masih berlaku (sisa waktu lebih dari 1 menit).
+- Charge `pending` yang waktunya sudah habis dicek dulu ke gateway: jika
+  ternyata sudah dibayar, invoice langsung lunas dan tidak ada charge baru.
+- QRIS berlaku 15 menit. Membatalkan invoice atau mencatat pembayaran tunai
+  tidak membatalkan charge di gateway; jika QR itu tetap dibayar, pembayarannya
+  menjadi anomali.
+- Invoice milik pelanggan `terminated` tetap bisa dibayar lewat QRIS.
+
+## Pembayaran manual
+
+- Dicatat kasir atau admin dengan metode `cash` atau `transfer` (QRIS hanya
+  dicatat otomatis oleh gateway). Nominal harus sama dengan total, invoice
+  harus `unpaid`/`overdue`, catatan opsional.
+- Tanggal bayar default saat ini. Boleh mundur (uang diterima kemarin baru
+  dicatat hari ini), tetapi tidak di masa depan dan tidak sebelum tanggal
+  terbit invoice.
 
 ## Pembayaran anomali
 
-Pembayaran yang masuk tetapi tidak bisa diterapkan secara normal: dibayar
-dua kali (misalnya tunai lalu QRIS), charge kedaluwarsa tetapi tetap dibayar,
-invoice sudah `paid` atau `cancelled`, atau nominal tidak cocok.
+Pembayaran QRIS yang masuk tetapi tidak bisa diterapkan secara normal:
+invoice sudah `paid` (misalnya dibayar tunai lalu QRIS, atau dua charge
+dibayar) atau `cancelled`, atau nominal tidak cocok dengan charge/invoice.
+
+Charge yang sudah `expired`/`failed` di database tetapi tetap dibayar **bukan**
+anomali selama invoice masih `unpaid`/`overdue` dan nominalnya cocok:
+pembayarannya diterapkan normal (keputusan 2026-10-05; pelanggan sudah membayar
+dengan benar dan tidak boleh tetap terisolir).
 
 - Uang tetap dicatat sebagai `payments` dengan `review_status = needs_review`
   dan `review_note` berisi alasannya.
@@ -142,6 +162,9 @@ invoice sudah `paid` atau `cancelled`, atau nominal tidak cocok.
   di luar sistem.
 - Webhook tetap merespons 200 dan notifikasi mentah tetap tersimpan di
   `payment_notifications`.
+- Notifikasi refund/chargeback dari gateway hanya dicatat
+  (`payment.gateway_reversal`); data pembayaran dan invoice tidak berubah karena
+  pengembalian dana di v1 ditangani manual.
 
 ## Status pelanggan
 
@@ -166,8 +189,10 @@ terminated ──(berlangganan lagi)──> pending
   `grace_days` default 3 dan bisa diubah admin menjadi 0 untuk isolir tepat
   setelah jatuh tempo.
 - **Aktivasi otomatis**: setelah pembayaran, jika pelanggan `isolated` dengan
-  `isolation_reason = overdue` dan **tidak ada lagi** invoice `unpaid`/`overdue`
-  yang lewat toleransi.
+  `isolation_reason = overdue`, `billing.auto_activate = true`, dan **tidak ada
+  lagi** invoice `unpaid`/`overdue` yang lewat toleransi
+  (`due_at + grace_days < hari ini`). Tagihan lain yang belum lewat toleransi
+  tidak menghalangi aktivasi.
 - **Isolir manual** oleh admin mengisi `isolation_reason = manual`. Isolir
   manual **tidak** dibuka oleh pembayaran; hanya admin yang bisa membukanya.
 - Isolir/aktivasi manual oleh admin wajib menyertakan alasan dan tercatat di log.

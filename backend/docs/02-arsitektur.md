@@ -23,7 +23,8 @@ app/
 │   │                        ReactivateCustomer, DeleteCustomer, ActivateNewCustomer
 │   ├── Invoices/            GenerateInvoiceForSubscription, GenerateMonthlyInvoices,
 │   │                        IssueInvoice, MarkOverdueInvoices, CancelInvoice, ReissueInvoice
-│   ├── Payments/            RecordManualPayment, ProcessGatewayNotification
+│   ├── Payments/            CreateQrisCharge, MarkInvoicePaid, RecordManualPayment,
+│   │                        ProcessGatewayNotification, ReconcilePendingCharges
 │   └── Network/             IsolateCustomer, ActivateCustomer
 ├── Contracts/               Interface integrasi
 │   ├── PaymentGateway.php
@@ -72,15 +73,26 @@ Admin/kasir menandai "terpasang" → ActivateNewCustomer (transaksi)
 
 ### Pembayaran QRIS
 ```
-Pelanggan buka link tagihan → CreateQrisCharge (PaymentGateway)
-Pelanggan bayar → Payment gateway → POST /webhooks/payments/midtrans
-  → verifikasi signature
-  → ProcessGatewayNotification (idempotent, dalam transaksi)
-      → invoice = paid, simpan payment
-      → jika pelanggan isolated dan isolation_reason = overdue → dispatch ActivateCustomerJob
-      → pembayaran anomali: simpan payment dengan review_status = needs_review, invoice tidak berubah
-      → dispatch SendPaymentConfirmation (hanya pembayaran normal)
-  → respons 200 cepat
+Pelanggan buka link tagihan → CreateQrisCharge (cache lock per invoice)
+  → pakai ulang charge pending yang masih berlaku, atau buat charge baru (PaymentGateway)
+Pelanggan bayar → Payment gateway → POST /webhooks/payments/midtrans (routes/webhooks.php, tanpa session)
+  → simpan payload ke payment_notifications
+  → verifikasi signature (salah → 403)
+  → dispatch ProcessPaymentNotificationJob → respons 200 cepat
+      → ProcessGatewayNotification (idempotent, dalam transaksi, lock pelanggan → invoice → charge)
+          → normal: MarkInvoicePaid
+              → invoice = paid, simpan payment, log payment.received
+              → dispatch SendPaymentConfirmationJob (afterCommit)
+              → jika isolated + isolation_reason = overdue + tanpa tunggakan lewat toleransi
+                → dispatch ActivateCustomerJob (afterCommit)
+          → anomali: simpan payment dengan review_status = needs_review, invoice tidak berubah
+Scheduler (tiap jam) → ReconcilePendingCharges → checkStatus() → ProcessGatewayNotification
+```
+
+### Pembayaran manual
+```
+Kasir → RecordManualPayment (cash/transfer, nominal pas, tanggal bayar boleh mundur)
+  → MarkInvoicePaid (jalur yang sama dengan QRIS)
 ```
 
 ### Isolir otomatis

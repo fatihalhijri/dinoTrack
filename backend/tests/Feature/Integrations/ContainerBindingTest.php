@@ -7,7 +7,6 @@ use App\Contracts\NetworkController;
 use App\Contracts\PaymentGateway;
 use App\Exceptions\NotImplementedException;
 use App\Models\Customer;
-use App\Models\Invoice;
 use App\Services\Messaging\FonnteMessageSender;
 use App\Services\Network\MikrotikNetworkController;
 use App\Services\Payment\MidtransPaymentGateway;
@@ -22,9 +21,7 @@ it('me-resolve setiap interface ke implementasi aslinya', function () {
 });
 
 it('melempar NotImplementedException dari implementasi yang masih stub', function () {
-    expect(fn () => app(PaymentGateway::class)->createQrisCharge(new Invoice))
-        ->toThrow(NotImplementedException::class)
-        ->and(fn () => app(NetworkController::class)->isolate(new Customer))
+    expect(fn () => app(NetworkController::class)->isolate(new Customer))
         ->toThrow(NotImplementedException::class)
         ->and(fn () => app(MessageSender::class)->send('628123456789', 'Halo'))
         ->toThrow(NotImplementedException::class);

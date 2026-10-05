@@ -2,11 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Contracts\PaymentGateway;
 use App\Enums\InvoiceStatus;
+use App\Enums\PaymentChargeStatus;
+use App\Exceptions\PaymentGatewayException;
 use App\Models\Invoice;
+use App\Models\PaymentCharge;
 use Illuminate\Console\Command;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
+use Tests\Fakes\FakePaymentGateway;
 
 it('menerbitkan tagihan untuk tanggal simulasi', function () {
     $subscription = billedSubscription(billingDay: 10, startsAt: '2026-08-10');
@@ -79,4 +84,62 @@ it('menjadwalkan command tagihan sesuai docs/02 tanpa tumpang tindih dan di satu
 })->with([
     'generate tagihan 00:10' => ['billing:generate-invoices', '10 0 * * *'],
     'tandai overdue 01:00' => ['billing:mark-overdue', '0 1 * * *'],
+    'rekonsiliasi pembayaran tiap jam' => ['billing:reconcile-payments', '0 * * * *'],
 ]);
+
+it('menerapkan status gateway untuk charge pending yang webhook-nya terlewat', function () {
+    $gateway = new FakePaymentGateway;
+    $this->app->instance(PaymentGateway::class, $gateway);
+    $settled = PaymentCharge::factory()->create(['created_at' => now()->subMinutes(10)]);
+    $expired = PaymentCharge::factory()->create(['created_at' => now()->subHours(2)]);
+    $gateway->respondWith(gatewayNotification($settled));
+    $gateway->respondWith(gatewayNotification($expired, PaymentChargeStatus::Expired, transactionStatus: 'expire'));
+
+    $this->artisan('billing:reconcile-payments')
+        ->expectsOutputToContain('Rekonsiliasi pembayaran: 2 charge dicek, 0 gagal.')
+        ->assertSuccessful();
+
+    expect($settled->invoice->fresh()->status)->toBe(InvoiceStatus::Paid)
+        ->and($expired->fresh()->status)->toBe(PaymentChargeStatus::Expired);
+});
+
+it('melewati charge yang terlalu baru, terlalu lama, atau sudah selesai', function () {
+    $gateway = new FakePaymentGateway;
+    $this->app->instance(PaymentGateway::class, $gateway);
+    PaymentCharge::factory()->create(['created_at' => now()->subMinutes(2)]);
+    PaymentCharge::factory()->create(['created_at' => now()->subDays(8)]);
+    PaymentCharge::factory()->settled()->create(['created_at' => now()->subHour()]);
+    PaymentCharge::factory()->expired()->create(['created_at' => now()->subHour()]);
+
+    $this->artisan('billing:reconcile-payments')
+        ->expectsOutputToContain('0 charge dicek, 0 gagal.')
+        ->assertSuccessful();
+
+    $gateway->assertNothingCalled();
+});
+
+it('menggagalkan charge tanpa QR tanpa bertanya ke gateway', function () {
+    $gateway = new FakePaymentGateway;
+    $this->app->instance(PaymentGateway::class, $gateway);
+    $abandoned = PaymentCharge::factory()->create(['qr_string' => null, 'qr_url' => null, 'created_at' => now()->subHour()]);
+
+    $this->artisan('billing:reconcile-payments')->assertSuccessful();
+
+    expect($abandoned->fresh()->status)->toBe(PaymentChargeStatus::Failed);
+    $gateway->assertNothingCalled();
+});
+
+it('melanjutkan rekonsiliasi dan keluar dengan kode gagal jika satu charge galat', function () {
+    $gateway = (new FakePaymentGateway)->failTimes(1, new PaymentGatewayException('Midtrans tidak bisa dihubungi.'));
+    $this->app->instance(PaymentGateway::class, $gateway);
+    $failing = PaymentCharge::factory()->create(['created_at' => now()->subHour()]);
+    $next = PaymentCharge::factory()->create(['created_at' => now()->subHour()]);
+    $gateway->respondWith(gatewayNotification($next));
+
+    $this->artisan('billing:reconcile-payments')
+        ->expectsOutputToContain('1 charge dicek, 1 gagal.')
+        ->expectsOutputToContain("Charge gagal (detail di log): {$failing->id}")
+        ->assertFailed();
+
+    expect($next->invoice->fresh()->status)->toBe(InvoiceStatus::Paid);
+});

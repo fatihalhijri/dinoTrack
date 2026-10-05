@@ -15,3 +15,8 @@ Schedule::command('billing:mark-overdue')
     ->dailyAt('01:00')
     ->withoutOverlapping(60)
     ->onOneServer();
+
+Schedule::command('billing:reconcile-payments')
+    ->hourly()
+    ->withoutOverlapping(60)
+    ->onOneServer();

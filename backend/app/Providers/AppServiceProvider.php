@@ -27,16 +27,21 @@ use App\Services\Network\MikrotikNetworkController;
 use App\Services\Payment\MidtransPaymentGateway;
 use App\Support\SettingsRepository;
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use InvalidArgumentException;
 
 class AppServiceProvider extends ServiceProvider
 {
+    public const int WEBHOOK_RATE_LIMIT_PER_MINUTE = 120;
+
     /**
      * Register any application services.
      */
@@ -59,6 +64,15 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->configureMorphMap();
         $this->configureAuthorization();
+        $this->configureRateLimiting();
+    }
+
+    /**
+     * Webhook dibatasi per IP. Melebihi batas dibalas 429 dan Midtrans mencoba ulang nanti.
+     */
+    protected function configureRateLimiting(): void
+    {
+        RateLimiter::for('webhooks', fn (Request $request): Limit => Limit::perMinute(self::WEBHOOK_RATE_LIMIT_PER_MINUTE)->by($request->ip()));
     }
 
     /**

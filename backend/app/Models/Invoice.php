@@ -124,6 +124,19 @@ class Invoice extends Model
     }
 
     /**
+     * Tunggakan yang sudah lewat masa toleransi (`due_at + grace_days < hari ini`): dasar isolir
+     * otomatis, dan penghalang aktivasi otomatis setelah pembayaran.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function pastGracePeriod(Builder $query, CarbonImmutable $today, int $graceDays): void
+    {
+        $query->whereIn('status', InvoiceStatus::outstanding())
+            ->whereDate('due_at', '<', $today->subDays($graceDays)->toDateString());
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
