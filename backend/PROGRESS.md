@@ -2,7 +2,7 @@
 
 Status: ⬜ belum · 🟨 sedang dikerjakan · ✅ selesai
 
-Tahap berikutnya: **Tahap 05** (pembayaran manual & QRIS).
+Tahap berikutnya: **Tahap 06** (Mikrotik: isolir & aktivasi).
 
 | Tahap | Nama | Status | Tanggal | Catatan |
 |---|---|---|---|---|
@@ -11,7 +11,7 @@ Tahap berikutnya: **Tahap 05** (pembayaran manual & QRIS).
 | 02 | Role, permission & otorisasi | ✅ | 2026-10-05 | Matriks 19 permission × 3 role, 6 policy, `Gate::before` admin, `auth.permissions` di Inertia, registrasi publik dan hapus akun sendiri dibuang; Pint, PHPStan, 249 test hijau |
 | 03 | Master data (paket, router, pelanggan) | ✅ | 2026-10-05 | 14 Action + 9 Form Request + `DisableCustomerSecretJob`, kode pelanggan teruji aman di 4 proses paralel, pesan validasi Bahasa Indonesia; Pint, PHPStan, 383 test hijau |
 | 04 | Tagihan otomatis | ✅ | 2026-10-05 | Generator catch-up tanpa duplikat, prorata integer, nomor invoice per bulan, overdue, batal + terbit ulang, aktivasi pelanggan dengan tagihan pertama, jadwal 00:10/01:00; Pint, PHPStan, 518 test hijau |
-| 05 | Pembayaran manual & QRIS | 🟨 | | |
+| 05 | Pembayaran manual & QRIS | ✅ | 2026-10-05 | Pembayaran manual, QRIS Midtrans (HTTP client), webhook idempotent lewat queue, rekonsiliasi per jam, dan pemicu aktivasi; balapan notifikasi teruji di 4 proses paralel; Pint, PHPStan, 621 test hijau |
 | 06 | Mikrotik: isolir & aktivasi | ⬜ | | |
 | 07 | Notifikasi WhatsApp | ⬜ | | |
 | 08 | Laporan & metrik dashboard | ⬜ | | |
