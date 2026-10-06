@@ -2,7 +2,7 @@
 
 Status: ⬜ belum · 🟨 sedang dikerjakan · ✅ selesai
 
-Tahap berikutnya: **Tahap 11** (Kesiapan deploy).
+Tahap berikutnya: **fase frontend** (halaman React sesuai `docs/08-kontrak-halaman.md`). Backend selesai.
 
 | Tahap | Nama | Status | Tanggal | Catatan |
 |---|---|---|---|---|
@@ -17,7 +17,7 @@ Tahap berikutnya: **Tahap 11** (Kesiapan deploy).
 | 08 | Laporan & metrik dashboard | ✅ | 2026-10-06 | `ReportService` (pendapatan basis kas per metode, umur tunggakan, pergerakan pelanggan dari `activity_logs` dengan index baru, ringkasan dashboard di-cache 5 menit dan dihapus setelah commit) + ekspor CSV di-stream untuk Excel Indonesia; Pint, PHPStan, 833 test hijau |
 | 09 | Controller & route | ✅ | 2026-10-06 | 15 controller tipis + 12 API Resource tanpa field sensitif, route admin per modul dengan permission + Policy, filter/pencarian/pagination, user nonaktif, pengaturan usaha/tagihan/template, kirim ulang tagihan, tinjau anomali, kontrak halaman `docs/08`; Pint, PHPStan, 1059 test hijau |
 | 10 | Review keamanan | ✅ | 2026-10-06 | Audit `docs/09` tanpa temuan Kritis; webhook dibatasi ukuran dan `status_code`, `retry_after` > timeout job, prune terjadwal, header keamanan, alamat router disembunyikan, advisory npm produksi bersih; Pint, PHPStan, 1074 test hijau |
-| 11 | Kesiapan deploy | ⬜ | | |
+| 11 | Kesiapan deploy | ✅ | 2026-10-07 | Queue dipisah `default`/`network`/`notifications`, `billing:health` + `/up` memeriksa database/Redis/antrean/pembayaran tertahan, konfigurasi `deploy/` (Nginx, PHP-FPM, Supervisor, cron, deploy dan backup) dengan panduan `docs/10`, CI di root repo; Pint, PHPStan, 1110 test hijau |
 
 ## Keputusan penting
 
@@ -137,6 +137,12 @@ Catat di sini setiap keputusan yang menyimpang dari `docs/` beserta alasannya.
 | 2026-10-06 | A8 `retry_after` queue bawaan 150 s (`database`, `redis`, `beanstalkd`), dijaga `ConfigTest` terhadap `$timeout` semua job (S-2) | Job router 100 s melebihi `retry_after` 90 s sehingga bisa berjalan dobel |
 | 2026-10-06 | A9 Retensi: `PaymentNotification` `MassPrunable` (signature salah 30 hari, valid terproses 365 hari, belum terproses tidak dihapus), `model:prune` 02:00 dan `queue:prune-failed --hours=720` 02:10; `activity_logs`/`message_logs` tidak dihapus (S-5) | Jadwal prune di docs/02 belum ada; laporan bergantung pada `activity_logs` |
 | 2026-10-06 | A10 Middleware global `AddSecurityHeaders` (`X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: same-origin`), tanpa CSP dulu (R-2). `RouterUnreachableException::summary()` tanpa alamat router untuk `network_error` dan activity log (R-4). `concurrently` ke `devDependencies` + `overrides.shell-quote ^1.11.0` (R-1) | Signed URL tagihan tanpa masa berlaku tidak boleh bocor lewat Referer; kasir/teknisi tidak perlu alamat router; advisory critical |
+| 2026-10-07 | O1 Target deploy PHP **8.4** dari PPA `ondrej/php` (prompt Tahap 11 menyebut 8.3); satu user Linux `dinotrack` untuk pool PHP-FPM khusus, worker, cron, dan deploy; konfigurasi server di folder baru `deploy/` (nginx, php, supervisor, cron, `deploy.sh`, `backup-database.sh`), panduan di `docs/10-deploy.md` | `composer.lock` butuh 8.4; satu user menghindari bentrok izin `storage/` |
+| 2026-10-07 | O2 Queue dipisah `default` (notifikasi pembayaran), `network` (4 job router), `notifications` (WA + 3 job pemicu) lewat enum `QueueName` dan atribut `#[Queue]` Laravel 13; Supervisor 2/2/1 proses, `stopwaitsecs=130` | Audit R-9: aktivasi setelah bayar tidak antre di belakang pesan WA |
+| 2026-10-07 | O3 `billing:health` (`HealthChecker` di `app/Services/Health`, hanya membaca) tiap 15 menit: database, Redis, umur job pending `default`/`network` > 10 menit, notifikasi pembayaran valid belum diproses > 15 menit (24 jam terakhir) = gagal; `failed_jobs`, WA `failed` 24 jam / `queued` > 2 jam, router tidak terjangkau = peringatan; checklist `.env` production = gagal. Masalah ke log, kode keluar gagal hanya untuk status gagal. `/up` membalas 500 bila database/Redis mati (listener `DiagnosingHealth`). Alert WA ke admin ditunda | Audit S-4; umur antrean WA tidak bermakna karena job yang ditahan rate limit dirilis dengan waktu asli |
+| 2026-10-07 | O4 Deploy di tempat dengan mode maintenance (±1–2 menit; webhook 503 ditutup retry Midtrans + rekonsiliasi), `optimize` sebelum `migrate`, reload PHP-FPM karena `opcache.validate_timestamps=0`; gagal = tetap maintenance. Default branch `master` | Sederhana untuk satu VPS; tanpa release symlink |
+| 2026-10-07 | O5 Nginx tanpa `trustProxies` (koneksi langsung, tanpa Cloudflare); `/webhooks/*` body 16 KB + `limit_req` 2 r/s per IP; halaman publik tanpa `limit_req` (S-3); query `/isolir` disamarkan dan referer tidak dicatat di access log (R-8); HSTS. `SESSION_DRIVER=database`, cache/queue Redis (`noeviction`, AOF) | Sisa risiko T-1, R-8, R-10 |
+| 2026-10-07 | O6 Backup `mysqldump --single-transaction` harian 03:30 dengan user baca-saja, simpan lokal 14 hari + offsite generik lewat `rclone` (`RCLONE_REMOTE`); `APP_KEY`/`.env` di-backup terpisah. CI dipindah ke `.github/workflows/backend.yml` di root repo (Pint, PHPStan, Pest + MySQL 8.4, setiap push/PR, tanpa `npm run check`); `backend/.github` dihapus dan dependabot dipindah ke root | `backend/.github` tidak pernah dibaca GitHub karena root repo adalah folder induk |
 
 ## Utang teknis
 
@@ -159,8 +165,8 @@ Hal yang sengaja ditunda untuk dikerjakan nanti.
 - Login passkey tidak melewati `Fortify::authenticateUsing`; akun nonaktif yang masuk lewat passkey baru dikeluarkan `EnsureUserIsActive` pada request berikutnya (tidak bisa membuka halaman apa pun).
 - `customers/show` hanya memuat 24 tagihan/pembayaran/pesan/aktivitas terbaru; riwayat lengkap lewat `/invoices?customer_id=` (belum ada filter pelanggan di `/payments`).
 - S-3 (audit): rate limit `/isolir` dan halaman tagihan per IP bisa dipakai bersama seluruh pelanggan di balik NAT ISP; perlu keputusan (allowlist IP NAT di `.env`, naikkan batas, atau terima).
-- S-4 (audit): `failed_jobs`, `payment.notification_failed`, pesan WA `failed`, dan rekonsiliasi gagal hanya terlihat di log; gabungkan dengan `billing:health` Tahap 11 atau indikator dashboard.
-- R-9 (audit): beri `onQueue()` (`network`, `notifications`) saat Tahap 11 memisahkan queue, agar job aktivasi setelah bayar tidak antre di belakang ratusan pesan WA.
+- S-4 (audit, sisa): `billing:health` sudah mencatat kegagalan ke log; indikator di dashboard admin (WA gagal, notifikasi pembayaran tertahan, `failed_jobs`) dan alert WA ke admin belum ada. Rekonsiliasi pembayaran yang gagal masih hanya di log.
+- Deploy (Tahap 11): konfigurasi `deploy/` dan `docs/10-deploy.md` belum diuji di VPS sungguhan; `shellcheck` tidak tersedia di mesin pengembang (hanya `bash -n`); workflow CI baru berjalan setelah di-push. Bit executable script tidak tercatat dari Windows, sehingga script dipanggil lewat `bash`.
 - R-3/R-5 (audit, fase frontend): `auth.user` dibentuk minimal; pertimbangkan 2FA wajib untuk admin; pasang CSP setelah skrip inline halaman publik dipindah.
 - R-6/R-7 (audit): lock charge QRIS 60 s bisa habis pada panggilan gateway beruntun; panggilan router sinkron (status koneksi, tes koneksi) belum di-throttle.
 - R-11 (audit): `npm audit` dev melaporkan `tinypool` lewat `vite-plus` 0.3.0; naikkan ke ≥0.3.3 saat fase frontend.

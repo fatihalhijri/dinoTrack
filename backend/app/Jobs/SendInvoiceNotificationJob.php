@@ -7,9 +7,11 @@ namespace App\Jobs;
 use App\Actions\Notifications\NotifyCustomer;
 use App\Enums\InvoiceStatus;
 use App\Enums\MessageTemplateKey;
+use App\Enums\QueueName;
 use App\Models\Invoice;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Attributes\Queue;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -17,6 +19,7 @@ use Throwable;
  * Menjadwalkan pesan WhatsApp `invoice_issued` untuk invoice yang baru terbit (dari IssueInvoice).
  * Invoice yang sudah lunas atau dibatalkan sebelum job berjalan tidak diberi tahu.
  */
+#[Queue(QueueName::Notifications)]
 final class SendInvoiceNotificationJob implements ShouldQueue
 {
     use Queueable;

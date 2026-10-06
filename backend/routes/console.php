@@ -43,3 +43,9 @@ Schedule::command('queue:prune-failed', ['--hours' => 24 * 30])
     ->dailyAt('02:10')
     ->withoutOverlapping(60)
     ->onOneServer();
+
+// Pemeriksaan kesehatan (docs/10-deploy.md): masalah ditulis ke log untuk ditindak admin.
+Schedule::command('billing:health')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping(60)
+    ->onOneServer();

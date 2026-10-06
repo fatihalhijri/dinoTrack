@@ -22,6 +22,7 @@ use App\Models\Router;
 use App\Models\Setting;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\Health\HealthChecker;
 use App\Services\Messaging\FonnteMessageSender;
 use App\Services\Messaging\LogMessageSender;
 use App\Services\Network\MikrotikNetworkController;
@@ -30,10 +31,12 @@ use App\Support\SettingsRepository;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -78,6 +81,19 @@ class AppServiceProvider extends ServiceProvider
         $this->configureMorphMap();
         $this->configureAuthorization();
         $this->configureRateLimiting();
+        $this->configureHealthCheck();
+    }
+
+    /**
+     * `/up` (bawaan Laravel) membalas 500 jika database atau Redis tidak bisa dipakai, agar
+     * pemantauan eksternal tahu aplikasi mati walaupun PHP masih berjalan. Router tidak dicek di
+     * sini karena lambat; pemeriksaan lengkap ada di `billing:health`.
+     */
+    protected function configureHealthCheck(): void
+    {
+        Event::listen(DiagnosingHealth::class, function (): void {
+            $this->app->make(HealthChecker::class)->ensureServicesReachable();
+        });
     }
 
     /**

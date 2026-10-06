@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\CustomerStatus;
+use App\Enums\HealthStatus;
 use App\Enums\InvoiceStatus;
 use App\Enums\IsolationReason;
 use App\Enums\MessageStatus;
@@ -16,6 +17,7 @@ it('memberi label untuk setiap nilai enum status', function (BackedEnum $case) {
     expect($case->label())->toBeString()->not->toBeEmpty();
 })->with(fn (): array => collect([
     CustomerStatus::class,
+    HealthStatus::class,
     InvoiceStatus::class,
     IsolationReason::class,
     MessageStatus::class,

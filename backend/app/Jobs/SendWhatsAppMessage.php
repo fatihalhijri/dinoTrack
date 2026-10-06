@@ -6,12 +6,14 @@ namespace App\Jobs;
 
 use App\Contracts\MessageSender;
 use App\Enums\MessageStatus;
+use App\Enums\QueueName;
 use App\Exceptions\MessageSendException;
 use App\Models\MessageLog;
 use App\Support\ActivityLogger;
 use DateTimeInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Attributes\Queue;
 use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -24,6 +26,7 @@ use Throwable;
  * di hari tagih tidak kehabisan percobaan) dan kegagalan sungguhan dibatasi `$maxExceptions`.
  * Penolakan provider (nomor tidak valid, token salah) langsung `failed` tanpa dicoba ulang.
  */
+#[Queue(QueueName::Notifications)]
 final class SendWhatsAppMessage implements ShouldQueue
 {
     use Queueable;

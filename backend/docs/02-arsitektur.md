@@ -39,9 +39,10 @@ app/
 │   ├── Payment/MidtransPaymentGateway.php
 │   ├── Network/MikrotikNetworkController.php   (+ RouterOsClientFactory)
 │   ├── Messaging/FonnteMessageSender.php       (+ LogMessageSender untuk development)
-│   └── Reports/             ReportService, ReportCsvExporter (hanya membaca database,
-│                            tanpa interface karena tidak perlu di-fake)
-├── Enums/                   CustomerStatus, InvoiceStatus, PaymentMethod, ...
+│   ├── Reports/             ReportService, ReportCsvExporter (hanya membaca database,
+│   │                        tanpa interface karena tidak perlu di-fake)
+│   └── Health/              HealthChecker untuk billing:health dan /up (docs/10)
+├── Enums/                   CustomerStatus, InvoiceStatus, PaymentMethod, QueueName, ...
 ├── Jobs/                    Pembungkus queue untuk Actions yang lambat
 ├── Console/Commands/        Perintah terjadwal
 ├── Http/
@@ -219,9 +220,24 @@ backend (halaman React belum ada; nyalakan lagi di fase frontend).
 | tiap jam | Rekonsiliasi pembayaran pending ke gateway |
 | 02:00 harian | `model:prune` (`payment_notifications`, retensi di docs/03) |
 | 02:10 harian | `queue:prune-failed` (failed jobs > 30 hari) |
+| tiap 15 menit | `billing:health` (database, Redis, antrean, router, kegagalan; masalah ke log) |
 
 Semua jadwal memakai `->withoutOverlapping()` dan `->onOneServer()`.
 
 `retry_after` koneksi queue (bawaan 150 detik) wajib lebih lama dari `$timeout` job terlama
 (job router 100 detik) agar job yang masih berjalan tidak diambil worker lain; dijaga test
 `ConfigTest`. Audit keamanan dan keputusan turunannya: `docs/09-audit-keamanan.md`.
+
+## Queue
+
+Setiap job menetapkan queue lewat atribut `#[Queue(QueueName::...)]` (dijaga `JobQueueTest`),
+dan setiap queue punya worker Supervisor sendiri (docs/10-deploy.md):
+
+| Queue | Job |
+|---|---|
+| `default` | `ProcessPaymentNotificationJob` |
+| `network` | `IsolateCustomerJob`, `ActivateCustomerJob`, `ApplyCustomerProfileJob`, `DisableCustomerSecretJob` |
+| `notifications` | `SendWhatsAppMessage`, `SendInvoiceNotificationJob`, `SendPaymentConfirmationJob`, `SendIsolationNotificationJob` |
+
+Aktivasi setelah bayar tidak mengantre di belakang ratusan pesan WhatsApp yang ditahan rate limit
+(audit R-9).

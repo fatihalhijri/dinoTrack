@@ -6,11 +6,13 @@ namespace App\Jobs;
 
 use App\Actions\Network\ActivateCustomer;
 use App\Concerns\HandlesRouterFailures;
+use App\Enums\QueueName;
 use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Attributes\Queue;
 use Throwable;
 
 /**
@@ -19,6 +21,7 @@ use Throwable;
  * ActivateCustomerManually. Unik per pelanggan dan mode, agar permintaan admin tidak terbuang
  * karena aktivasi otomatis yang sedang antre (yang mungkin akan dilewati).
  */
+#[Queue(QueueName::Network)]
 final class ActivateCustomerJob implements ShouldBeUnique, ShouldQueue
 {
     use HandlesRouterFailures, Queueable;

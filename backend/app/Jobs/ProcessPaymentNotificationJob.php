@@ -6,11 +6,13 @@ namespace App\Jobs;
 
 use App\Actions\Payments\ProcessGatewayNotification;
 use App\Contracts\PaymentGateway;
+use App\Enums\QueueName;
 use App\Exceptions\PaymentGatewayException;
 use App\Models\PaymentNotification;
 use App\Support\ActivityLogger;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Attributes\Queue;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -18,6 +20,7 @@ use Throwable;
  * Memproses notifikasi webhook yang signature-nya sudah valid, di luar request agar webhook
  * cepat merespons dan galat sementara (deadlock, database sibuk) dicoba ulang oleh queue.
  */
+#[Queue(QueueName::Default)]
 final class ProcessPaymentNotificationJob implements ShouldQueue
 {
     use Queueable;

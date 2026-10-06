@@ -95,6 +95,7 @@ it('menjadwalkan command sesuai docs/02 tanpa tumpang tindih dan di satu server'
     'rekonsiliasi pembayaran tiap jam' => ['billing:reconcile-payments', '0 * * * *'],
     'hapus notifikasi pembayaran lama 02:00' => ['model:prune', '0 2 * * *'],
     'hapus failed jobs lebih dari 30 hari 02:10' => ['queue:prune-failed --hours=720', '10 2 * * *'],
+    'pemeriksaan kesehatan tiap 15 menit' => ['billing:health', '*/15 * * * *'],
 ]);
 
 it('menerapkan status gateway untuk charge pending yang webhook-nya terlewat', function () {

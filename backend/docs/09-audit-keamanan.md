@@ -12,7 +12,7 @@ Tingkat keparahan:
 - **Sedang**: butuh syarat khusus (data bocor, beban tinggi, konfigurasi tertentu) atau dampaknya terbatas.
 - **Rendah**: pengerasan (hardening), kebersihan, atau risiko yang sudah diterima.
 
-Status: ✅ diperbaiki di Tahap 10 · ⏳ ditunda (tahap/keputusan berikutnya) · 📝 dicatat/diterima.
+Status: ✅ diperbaiki (Tahap 10, atau Tahap 11 bila disebut) · ⏳ ditunda (tahap/keputusan berikutnya) · 📝 dicatat/diterima.
 
 ## Ringkasan
 
@@ -22,7 +22,7 @@ Status: ✅ diperbaiki di Tahap 10 · ⏳ ditunda (tahap/keputusan berikutnya) �
 | S-1 | Sedang | Signature Midtrans tidak mengikat `transaction_status`; `status_code` tidak dicocokkan | ✅ |
 | S-2 | Sedang | `retry_after` queue (90 s) lebih pendek dari `$timeout` job router (100 s) | ✅ |
 | S-3 | Sedang | Rate limit halaman publik per IP, padahal pelanggan berbagi IP NAT ISP | ⏳ keputusan |
-| S-4 | Sedang | Kegagalan job/webhook/WA hanya terlihat di log | ⏳ Tahap 11 |
+| S-4 | Sedang | Kegagalan job/webhook/WA hanya terlihat di log | ✅ Tahap 11 (`billing:health`); indikator dashboard ⏳ |
 | S-5 | Sedang | Jadwal pembersihan data lama di docs/02 belum dibuat | ✅ |
 | R-1 | Rendah | `npm audit`: `shell-quote` (critical) lewat `concurrently` di `dependencies` | ✅ |
 | R-2 | Rendah | Tanpa header keamanan (frame, referrer, sniffing) | ✅ |
@@ -32,8 +32,8 @@ Status: ✅ diperbaiki di Tahap 10 · ⏳ ditunda (tahap/keputusan berikutnya) �
 | R-6 | Rendah | Lock QRIS 60 s bisa habis sebelum panggilan gateway beruntun selesai | 📝 |
 | R-7 | Rendah | Panggilan router sinkron (status koneksi, tes koneksi) tanpa throttle | 📝 |
 | R-8 | Rendah | Cek tagihan `/isolir` bisa ditebak terdistribusi; `kode`/`hp` di query string | 📝 |
-| R-9 | Rendah | Semua job di queue `default`; job WA yang ditahan rate limit bangun bersamaan | ⏳ Tahap 11 |
-| R-10 | Rendah | Konfigurasi production (proxy, debug, cookie, PHP) | ⏳ Tahap 11 |
+| R-9 | Rendah | Semua job di queue `default`; job WA yang ditahan rate limit bangun bersamaan | ✅ Tahap 11 |
+| R-10 | Rendah | Konfigurasi production (proxy, debug, cookie, PHP) | ✅ Tahap 11 |
 | R-11 | Rendah | `npm audit` (dev): `tinypool` lewat `vite-plus` 0.3.0 | 📝 |
 
 Tidak ada temuan **Kritis**.
@@ -53,8 +53,8 @@ Tidak ada temuan **Kritis**.
     `gross_amount`, `transaction_status`, `transaction_id`, waktu, `payment_type`,
     `fraud_status`, `signature_key`; masing-masing maks. 255 karakter);
   - baris lama dihapus terjadwal (S-5).
-- **Risiko sisa:** ±2 KB × 120/menit per IP untuk payload palsu. Batasi juga di Nginx
-  (`client_max_body_size`, `limit_req`) di Tahap 11.
+- **Risiko sisa:** ±2 KB × 120/menit per IP untuk payload palsu. Tahap 11: Nginx membatasi
+  `/webhooks/*` dengan `client_max_body_size 16k` dan `limit_req` 2 r/s per IP (docs/10 bagian 3).
 - **Test:** `MidtransWebhookTest` — "menolak body di atas batas ukuran dengan 413 tanpa
   menyimpannya", "hanya menyimpan field audit dari notifikasi dengan signature salah".
 
@@ -98,7 +98,7 @@ Tidak ada temuan **Kritis**.
   kode pelanggan tetap berlaku), (b) menaikkan batas tampilan, atau (c) diterima.
 - **Status:** menunggu keputusan pemilik usaha (bergantung topologi jaringan).
 
-### S-4 — Kegagalan tidak terlihat admin (Sedang) ⏳
+### S-4 — Kegagalan tidak terlihat admin (Sedang) ✅ Tahap 11
 
 - **Lokasi:** `ReportService::dashboardSummary()`.
 - **Masalah:** dashboard menampilkan galat router (`network_error_at`) dan pembayaran
@@ -108,6 +108,12 @@ Tidak ada temuan **Kritis**.
 - **Usulan:** digabung dengan command `billing:health` di Tahap 11. Bisa juga ditambah
   indikator dashboard: pesan WA gagal 7 hari, notifikasi webhook valid yang belum diproses
   lebih dari 15 menit, dan jumlah `failed_jobs`.
+- **Perbaikan (Tahap 11):** `billing:health` tiap 15 menit memeriksa notifikasi pembayaran valid
+  yang belum diproses lebih dari 15 menit (gagal), `failed_jobs`, pesan WA `failed` 24 jam dan
+  `queued` lebih dari 2 jam (peringatan); masalah ditulis ke log dan `/up` membalas 500 bila
+  database/Redis mati (docs/10 bagian 8). Rekonsiliasi gagal tetap hanya di log.
+- **Sisa:** indikator di dashboard admin dan notifikasi WA ke admin ditunda ke fase frontend.
+- **Test:** `HealthCheckerTest`, `HealthCommandTest`, `HealthEndpointTest`.
 
 ### S-5 — Pembersihan data lama belum dijadwalkan (Sedang) ✅
 
@@ -187,23 +193,26 @@ PHP-FPM dengan memuat ulang berkali-kali. Usulan: `throttle` per pengguna bila m
 Risiko yang diterima di keputusan N9: 4 digit nomor WA dengan batas 10 cek/jam per kode bisa
 ditebak secara terdistribusi ke banyak kode (peluang 1/10.000 per tebakan). Yang terbuka hanya
 nama pelanggan dan tagihan terbuka beserta link bayar. `kode` dan `hp` dikirim lewat GET
-sehingga tercatat di access log web server; atur rotasi log di Tahap 11.
+sehingga tercatat di access log web server. Tahap 11: Nginx menyamarkan query `/isolir` dan tidak
+mencatat referer, log dirotasi harian (docs/10 bagian 3 dan 10).
 
-### R-9 — Antrean bersama (Rendah) ⏳
+### R-9 — Antrean bersama (Rendah) ✅ Tahap 11
 
 Semua job memakai queue `default`. Pada hari tagih, ratusan `SendWhatsAppMessage` yang ditahan
 `RateLimited` dilepas ulang bersamaan setiap ±5 detik, dan job router aktivasi setelah bayar
-ikut mengantre di belakangnya. Tahap 11 memisahkan queue (`network`, `notifications`, `default`);
-job perlu diberi `onQueue()` saat itu.
+ikut mengantre di belakangnya. Tahap 11 memisahkan queue (`default`, `network`, `notifications`)
+lewat atribut `#[Queue(QueueName::...)]` di setiap job (dijaga `JobQueueTest`) dengan worker
+Supervisor terpisah (docs/02 "Queue", docs/10 bagian 5).
 
-### R-10 — Konfigurasi production (Rendah) ⏳
+### R-10 — Konfigurasi production (Rendah) ✅ Tahap 11
 
-Diserahkan ke checklist Tahap 11:
+Diselesaikan di docs/10 (checklist `.env`, Nginx, PHP) dan diperiksa otomatis oleh
+`billing:health` ("Konfigurasi production"):
 
 - `APP_DEBUG=false`
 - `SESSION_SECURE_COOKIE=true`
 - `trustProxies` bila memakai CDN/load balancer (signed URL dan rate limit per IP bergantung
-  pada skema dan IP yang benar)
+  pada skema dan IP yang benar); v1 tanpa proxy sehingga tidak dipasang
 - `zend.exception_ignore_args=On`
 - rotasi log
 - **PHP 8.4** (prompt Tahap 11 menyebut 8.3, proyek memakai 8.4)

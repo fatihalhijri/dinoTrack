@@ -6,9 +6,11 @@ namespace App\Jobs;
 
 use App\Actions\Notifications\NotifyCustomer;
 use App\Enums\MessageTemplateKey;
+use App\Enums\QueueName;
 use App\Models\Payment;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Attributes\Queue;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -16,6 +18,7 @@ use Throwable;
  * Menjadwalkan pesan WhatsApp `payment_received` untuk pembayaran normal (bukan anomali),
  * di-dispatch dari MarkInvoicePaid.
  */
+#[Queue(QueueName::Notifications)]
 final class SendPaymentConfirmationJob implements ShouldQueue
 {
     use Queueable;

@@ -8,10 +8,12 @@ use App\Actions\Notifications\NotifyCustomer;
 use App\Enums\CustomerStatus;
 use App\Enums\IsolationReason;
 use App\Enums\MessageTemplateKey;
+use App\Enums\QueueName;
 use App\Models\Customer;
 use App\Support\SettingsRepository;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Attributes\Queue;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -22,6 +24,7 @@ use Throwable;
  * isolir manual bisa karena alasan lain. Invoice yang disebut adalah tunggakan lewat toleransi
  * yang paling lama; pelanggan yang sudah membayar atau diaktifkan sebelum job berjalan dilewati.
  */
+#[Queue(QueueName::Notifications)]
 final class SendIsolationNotificationJob implements ShouldQueue
 {
     use Queueable;

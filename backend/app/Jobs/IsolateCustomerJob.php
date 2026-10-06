@@ -7,18 +7,21 @@ namespace App\Jobs;
 use App\Actions\Network\IsolateCustomer;
 use App\Concerns\HandlesRouterFailures;
 use App\Enums\IsolationReason;
+use App\Enums\QueueName;
 use App\Models\Customer;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Attributes\Queue;
 use Throwable;
 
 /**
  * Mengisolir pelanggan di router lalu mengubah status. Unik per pelanggan dan alasan isolir,
  * agar permintaan isolir manual admin tidak terbuang karena isolir otomatis yang sedang antre.
  */
+#[Queue(QueueName::Network)]
 final class IsolateCustomerJob implements ShouldBeUnique, ShouldQueue
 {
     use HandlesRouterFailures, Queueable;

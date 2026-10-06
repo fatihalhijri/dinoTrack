@@ -7,17 +7,20 @@ namespace App\Jobs;
 use App\Concerns\HandlesRouterFailures;
 use App\Contracts\NetworkController;
 use App\Enums\CustomerStatus;
+use App\Enums\QueueName;
 use App\Models\Customer;
 use App\Support\ActivityLogger;
 use App\Support\CustomerNetworkLock;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Attributes\Queue;
 use Throwable;
 
 /**
  * Menonaktifkan (bukan menghapus) secret PPPoE pelanggan yang berhenti berlangganan.
  */
+#[Queue(QueueName::Network)]
 final class DisableCustomerSecretJob implements ShouldBeUnique, ShouldQueue
 {
     use HandlesRouterFailures, Queueable;
