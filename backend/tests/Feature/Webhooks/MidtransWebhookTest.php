@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Enums\InvoiceStatus;
+use App\Http\Controllers\Webhooks\MidtransWebhookController;
 use App\Jobs\ProcessPaymentNotificationJob;
+use App\Models\ActivityLog;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PaymentCharge;
@@ -40,6 +42,50 @@ it('menolak notifikasi dengan signature salah tetapi tetap menyimpannya', functi
         ->order_id->toBe('INV20261000001-1')
         ->processed_at->toBeNull();
     Queue::assertNotPushed(ProcessPaymentNotificationJob::class);
+});
+
+it('hanya menyimpan field audit dari notifikasi dengan signature salah', function () {
+    Queue::fake([ProcessPaymentNotificationJob::class]);
+    $payload = [...signedMidtransPayload(serverKey: 'key-palsu'), 'sampah' => str_repeat('x', 5000), 'bersarang' => ['a' => 'b']];
+
+    $this->postJson(MIDTRANS_WEBHOOK_URL, $payload)->assertForbidden();
+
+    // toEqual: kolom JSON MySQL tidak mempertahankan urutan key.
+    expect(PaymentNotification::query()->sole()->payload)->toEqual([
+        'order_id' => 'INV20261000001-1',
+        'status_code' => '200',
+        'gross_amount' => '150000.00',
+        'transaction_status' => 'settlement',
+        'transaction_id' => 'trx-123',
+        'settlement_time' => '2026-10-05 10:03:00',
+        'fraud_status' => 'accept',
+        'signature_key' => $payload['signature_key'],
+    ]);
+});
+
+it('menolak body di atas batas ukuran dengan 413 tanpa menyimpannya', function () {
+    Queue::fake([ProcessPaymentNotificationJob::class]);
+    $payload = [...signedMidtransPayload(), 'sampah' => str_repeat('x', MidtransWebhookController::MAX_PAYLOAD_BYTES)];
+
+    $this->postJson(MIDTRANS_WEBHOOK_URL, $payload)->assertStatus(413);
+
+    expect(PaymentNotification::query()->count())->toBe(0);
+    Queue::assertNotPushed(ProcessPaymentNotificationJob::class);
+});
+
+it('tidak melunasi invoice dari notifikasi pending sah yang statusnya diubah menjadi settlement', function () {
+    $this->travelTo('2026-10-05 10:05');
+    $charge = chargeForSignedPayload();
+    // Signature tetap sah karena hanya mengikat order_id, status_code, dan gross_amount.
+    $payload = signedMidtransPayload(['status_code' => '201', 'transaction_status' => 'settlement']);
+
+    $this->postJson(MIDTRANS_WEBHOOK_URL, $payload)->assertOk();
+
+    expect($charge->invoice->fresh()->status)->toBe(InvoiceStatus::Unpaid)
+        ->and(Payment::query()->count())->toBe(0)
+        ->and(PaymentNotification::query()->sole()->processed_at)->toBeNull()
+        ->and(ActivityLog::query()->where('action', 'payment.notification_failed')->sole()->properties['error'])
+        ->toContain('status_code "201" tidak konsisten');
 });
 
 it('menyimpan notifikasi valid, membalas 200, dan memprosesnya lewat queue tanpa session', function () {

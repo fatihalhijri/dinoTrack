@@ -34,6 +34,9 @@ final class MidtransPaymentGateway implements PaymentGateway
     /** Gambar QR berbingkai ASPI lebih dulu, lalu QR polos. */
     private const array QR_ACTIONS = ['generate-qr-code-v2', 'generate-qr-code'];
 
+    /** status_code Midtrans untuk transaksi yang berhasil (settlement/capture). */
+    private const string SETTLED_STATUS_CODE = '200';
+
     public function createQrisCharge(Invoice $invoice, string $orderId): PaymentChargeResult
     {
         $expiryMinutes = (int) config('services.midtrans.qris_expiry_minutes');
@@ -105,6 +108,18 @@ final class MidtransPaymentGateway implements PaymentGateway
         }
 
         $status = $this->mapStatus($payload);
+
+        // Signature hanya mengikat order_id, status_code, dan gross_amount, bukan transaction_status.
+        // Status lunas wajib datang dengan status_code 200 agar payload `pending` (201) atau `expire`
+        // (407) yang sah tidak bisa diubah menjadi `settlement` tanpa merusak signature.
+        if ($status === PaymentChargeStatus::Settled && ($payload['status_code'] ?? null) !== self::SETTLED_STATUS_CODE) {
+            throw new PaymentGatewayException(sprintf(
+                'Notifikasi Midtrans %s untuk %s dengan status_code %s tidak konsisten; tidak diproses.',
+                $this->optionalString($payload, 'transaction_status'),
+                $orderId,
+                json_encode($payload['status_code'] ?? null),
+            ));
+        }
 
         return new GatewayNotification(
             orderId: $orderId,

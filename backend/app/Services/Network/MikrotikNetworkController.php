@@ -157,6 +157,7 @@ final class MikrotikNetworkController implements NetworkController
     {
         return new RouterUnreachableException(
             sprintf('Router %s (%s:%d) tidak bisa dijangkau: %s', $router->name, $router->host, $router->port, $exception->getMessage()),
+            summary: sprintf('Router tidak bisa dijangkau (%s).', $router->name),
             previous: $exception,
         );
     }

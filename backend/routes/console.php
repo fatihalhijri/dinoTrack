@@ -31,3 +31,15 @@ Schedule::command('billing:reconcile-payments')
     ->hourly()
     ->withoutOverlapping(60)
     ->onOneServer();
+
+// Pembersihan data lama (retensi di docs/03): notifikasi pembayaran lewat model:prune dan
+// failed jobs 30 hari. activity_logs dan message_logs tidak dihapus karena dipakai laporan dan riwayat.
+Schedule::command('model:prune')
+    ->dailyAt('02:00')
+    ->withoutOverlapping(60)
+    ->onOneServer();
+
+Schedule::command('queue:prune-failed', ['--hours' => 24 * 30])
+    ->dailyAt('02:10')
+    ->withoutOverlapping(60)
+    ->onOneServer();

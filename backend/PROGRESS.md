@@ -2,7 +2,7 @@
 
 Status: ⬜ belum · 🟨 sedang dikerjakan · ✅ selesai
 
-Tahap berikutnya: **Tahap 10** (Review keamanan).
+Tahap berikutnya: **Tahap 11** (Kesiapan deploy).
 
 | Tahap | Nama | Status | Tanggal | Catatan |
 |---|---|---|---|---|
@@ -16,7 +16,7 @@ Tahap berikutnya: **Tahap 10** (Review keamanan).
 | 07 | Notifikasi WhatsApp | ✅ | 2026-10-06 | Fonnte (dicocokkan dengan dokumentasi resmi) + driver `log`, `NotifyCustomer` tanpa pesan ganda, kirim lewat queue dengan rate limit 1 pesan/5 detik, pengingat 09:00, pesan isolir khusus tunggakan, halaman tagihan publik bertanda tangan dengan QRIS + polling dan link bayar di `/isolir`; Pint, PHPStan, 795 test hijau |
 | 08 | Laporan & metrik dashboard | ✅ | 2026-10-06 | `ReportService` (pendapatan basis kas per metode, umur tunggakan, pergerakan pelanggan dari `activity_logs` dengan index baru, ringkasan dashboard di-cache 5 menit dan dihapus setelah commit) + ekspor CSV di-stream untuk Excel Indonesia; Pint, PHPStan, 833 test hijau |
 | 09 | Controller & route | ✅ | 2026-10-06 | 15 controller tipis + 12 API Resource tanpa field sensitif, route admin per modul dengan permission + Policy, filter/pencarian/pagination, user nonaktif, pengaturan usaha/tagihan/template, kirim ulang tagihan, tinjau anomali, kontrak halaman `docs/08`; Pint, PHPStan, 1059 test hijau |
-| 10 | Review keamanan | ⬜ | | |
+| 10 | Review keamanan | ✅ | 2026-10-06 | Audit `docs/09` tanpa temuan Kritis; webhook dibatasi ukuran dan `status_code`, `retry_after` > timeout job, prune terjadwal, header keamanan, alamat router disembunyikan, advisory npm produksi bersih; Pint, PHPStan, 1074 test hijau |
 | 11 | Kesiapan deploy | ⬜ | | |
 
 ## Keputusan penting
@@ -132,6 +132,11 @@ Catat di sini setiap keputusan yang menyimpang dari `docs/` beserta alasannya.
 | 2026-10-06 | H7 Pengaturan: `UpdateBusinessProfile` (`business.name`/`address`/`whatsapp`; kosong = hapus baris), `UpdateBillingSettings` (batas `due_days` 1–31, `grace_days` 0–30, pengingat < jatuh tempo; opsi Q5, dijaga juga di Action), `UpdateMessageTemplate`; semua lewat model `Setting` (B8) dan log `settings.updated`/`message_template.updated`. Logo usaha ditunda (opsi Q6) | Batas tidak ada di docs/04 sebelumnya |
 | 2026-10-06 | H8 `ResendInvoice` + `NotifyCustomer(force: true)`: hanya invoice terbuka, template `invoice_issued`, pesan `sent` tidak menghalangi tetapi `queued` menolak; route `throttle:6,1`; log `invoice.resent`. `ResolvePayment`: `needs_review` → `resolved`, catatan min 5 karakter ditambahkan di bawah alasan anomali, log `payment.resolved` | Menyelesaikan utang teknis T05/T07 |
 | 2026-10-06 | H9 Test: `config/inertia.php` `testing.ensure_pages_exist = false` selama fase backend (opsi Q1-a) dan `Tests\TestCase` memanggil `withoutVite()` | Halaman React belum ada sehingga `assertInertia()->component()` dan `@vite` halaman gagal |
+| 2026-10-06 | A6 Audit keamanan `docs/09-audit-keamanan.md`: tidak ada temuan Kritis; 1 Tinggi, 5 Sedang, 11 Rendah. Diperbaiki: T-1, S-1, S-2, S-5, R-1, R-2, R-4. S-3 menunggu keputusan topologi NAT, S-4/R-9/R-10 ke Tahap 11, R-3/R-5 ke fase frontend | Semua rekomendasi rencana Tahap 10 disetujui |
+| 2026-10-06 | A7 Webhook Midtrans: body > 16 KB → 413 tanpa disimpan; payload signature salah hanya disimpan field auditnya (T-1). Status lunas wajib `status_code = "200"`, selain itu `PaymentGatewayException` (job gagal, `payment.notification_failed`); P4 tetap (tanpa `checkStatus()` di webhook) (S-1) | Endpoint publik bisa dipakai mengisi disk; signature Midtrans tidak mengikat `transaction_status` |
+| 2026-10-06 | A8 `retry_after` queue bawaan 150 s (`database`, `redis`, `beanstalkd`), dijaga `ConfigTest` terhadap `$timeout` semua job (S-2) | Job router 100 s melebihi `retry_after` 90 s sehingga bisa berjalan dobel |
+| 2026-10-06 | A9 Retensi: `PaymentNotification` `MassPrunable` (signature salah 30 hari, valid terproses 365 hari, belum terproses tidak dihapus), `model:prune` 02:00 dan `queue:prune-failed --hours=720` 02:10; `activity_logs`/`message_logs` tidak dihapus (S-5) | Jadwal prune di docs/02 belum ada; laporan bergantung pada `activity_logs` |
+| 2026-10-06 | A10 Middleware global `AddSecurityHeaders` (`X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: same-origin`), tanpa CSP dulu (R-2). `RouterUnreachableException::summary()` tanpa alamat router untuk `network_error` dan activity log (R-4). `concurrently` ke `devDependencies` + `overrides.shell-quote ^1.11.0` (R-1) | Signed URL tagihan tanpa masa berlaku tidak boleh bocor lewat Referer; kasir/teknisi tidak perlu alamat router; advisory critical |
 
 ## Utang teknis
 
@@ -153,3 +158,10 @@ Hal yang sengaja ditunda untuk dikerjakan nanti.
 - Logo usaha (docs/01 modul Pengaturan) belum ada: butuh upload file dan storage, dikerjakan bersama halaman `settings/business` di fase frontend.
 - Login passkey tidak melewati `Fortify::authenticateUsing`; akun nonaktif yang masuk lewat passkey baru dikeluarkan `EnsureUserIsActive` pada request berikutnya (tidak bisa membuka halaman apa pun).
 - `customers/show` hanya memuat 24 tagihan/pembayaran/pesan/aktivitas terbaru; riwayat lengkap lewat `/invoices?customer_id=` (belum ada filter pelanggan di `/payments`).
+- S-3 (audit): rate limit `/isolir` dan halaman tagihan per IP bisa dipakai bersama seluruh pelanggan di balik NAT ISP; perlu keputusan (allowlist IP NAT di `.env`, naikkan batas, atau terima).
+- S-4 (audit): `failed_jobs`, `payment.notification_failed`, pesan WA `failed`, dan rekonsiliasi gagal hanya terlihat di log; gabungkan dengan `billing:health` Tahap 11 atau indikator dashboard.
+- R-9 (audit): beri `onQueue()` (`network`, `notifications`) saat Tahap 11 memisahkan queue, agar job aktivasi setelah bayar tidak antre di belakang ratusan pesan WA.
+- R-3/R-5 (audit, fase frontend): `auth.user` dibentuk minimal; pertimbangkan 2FA wajib untuk admin; pasang CSP setelah skrip inline halaman publik dipindah.
+- R-6/R-7 (audit): lock charge QRIS 60 s bisa habis pada panggilan gateway beruntun; panggilan router sinkron (status koneksi, tes koneksi) belum di-throttle.
+- R-11 (audit): `npm audit` dev melaporkan `tinypool` lewat `vite-plus` 0.3.0; naikkan ke ≥0.3.3 saat fase frontend.
+- Test yang belum ada (docs/09 butir 9): QRIS untuk invoice pelanggan `terminated`, limit `/isolir` dan halaman tagihan per IP, pengingat terlewat tidak dikirim belakangan, isolir ulang tanpa pesan kedua.

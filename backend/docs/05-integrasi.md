@@ -61,13 +61,22 @@ Dicocokkan dengan dokumentasi resmi Midtrans pada 2026-10-05.
 - Endpoint aplikasi: `POST /webhooks/payments/midtrans`, didaftarkan di
   `routes/webhooks.php` dengan grup `api` (tanpa session, cookie, dan CSRF)
   dan rate limit `webhooks` 120/menit per IP.
-- Payload selalu disimpan ke `payment_notifications` (termasuk yang
-  signature-nya salah). Payload kosong dibalas 400.
+- Body di atas 16 KB dibalas **413** tanpa disimpan (notifikasi asli ±1–2 KB;
+  audit T-1). Payload kosong dibalas 400.
+- Payload disimpan ke `payment_notifications`: utuh bila signature valid; bila
+  signature salah hanya field audit (`order_id`, `status_code`, `gross_amount`,
+  `transaction_status`, `transaction_id`, waktu, `payment_type`, `fraud_status`,
+  `signature_key`, maks. 255 karakter per field).
 - Verifikasi: `signature_key == sha512(order_id + status_code + gross_amount + server_key)`,
   memakai `gross_amount` persis seperti diterima. Field yang hilang atau Server
   Key kosong dianggap signature salah → **403**.
 - Signature valid → dispatch `ProcessPaymentNotificationJob` lalu balas 200
   `OK`. Job memanggil `ProcessGatewayNotification` dan mengisi `processed_at`.
+- Signature tidak mengikat `transaction_status`, sehingga status lunas
+  (`settlement`, `capture` + `accept`) hanya diterima dengan `status_code`
+  `"200"`; selain itu notifikasi gagal diproses (`payment.notification_failed`)
+  agar payload `pending`/`expire` yang sah tidak bisa diubah menjadi lunas
+  (audit S-1).
 - Pemetaan status: `settlement` (atau `capture` + `fraud_status=accept`) →
   `settled`; `pending` → `pending`; `expire` → `expired`; `cancel`, `deny`,
   `failure` → `failed`; `refund`, `partial_refund`, `chargeback`,

@@ -77,7 +77,7 @@ it('menolak --date di production', function (string $command) {
         ->assertExitCode(Command::INVALID);
 })->with(['billing:generate-invoices', 'billing:mark-overdue', 'billing:isolate-overdue', 'billing:send-reminders']);
 
-it('menjadwalkan command tagihan sesuai docs/02 tanpa tumpang tindih dan di satu server', function (string $command, string $expression) {
+it('menjadwalkan command sesuai docs/02 tanpa tumpang tindih dan di satu server', function (string $command, string $expression) {
     $event = collect(app(Schedule::class)->events())
         ->first(fn (Event $event) => str_contains((string) $event->command, $command));
 
@@ -93,6 +93,8 @@ it('menjadwalkan command tagihan sesuai docs/02 tanpa tumpang tindih dan di satu
     'isolir 01:15 setelah overdue' => ['billing:isolate-overdue', '15 1 * * *'],
     'pengingat 09:00' => ['billing:send-reminders', '0 9 * * *'],
     'rekonsiliasi pembayaran tiap jam' => ['billing:reconcile-payments', '0 * * * *'],
+    'hapus notifikasi pembayaran lama 02:00' => ['model:prune', '0 2 * * *'],
+    'hapus failed jobs lebih dari 30 hari 02:10' => ['queue:prune-failed --hours=720', '10 2 * * *'],
 ]);
 
 it('menerapkan status gateway untuk charge pending yang webhook-nya terlewat', function () {

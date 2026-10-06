@@ -199,6 +199,11 @@ Log mentah setiap webhook yang masuk (untuk audit dan idempotensi).
 
 Index: (`order_id`, `transaction_status`).
 
+Retensi (`MassPrunable`, `model:prune` harian, keputusan 2026-10-06): signature salah
+dihapus setelah 30 hari; valid dan sudah diproses setelah 365 hari; valid tetapi belum
+diproses (job gagal) tidak pernah dihapus otomatis. Payload signature salah hanya berisi
+field audit (lihat docs/05). `activity_logs` dan `message_logs` tidak dihapus.
+
 ### message_templates
 | Kolom | Tipe | Catatan |
 |---|---|---|

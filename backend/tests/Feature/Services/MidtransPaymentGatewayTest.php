@@ -177,6 +177,17 @@ it('memetakan status transaksi Midtrans ke status charge', function (string $tra
     'status baru yang tidak dikenal' => ['mystery', null, null],
 ]);
 
+it('menolak status lunas yang tidak datang dengan status_code 200', function (string $transactionStatus, string $statusCode) {
+    $payload = signedMidtransPayload(['transaction_status' => $transactionStatus, 'status_code' => $statusCode]);
+
+    expect(fn () => app(MidtransPaymentGateway::class)->parseNotification($payload))
+        ->toThrow(PaymentGatewayException::class, 'tidak konsisten');
+})->with([
+    'settlement dari payload pending' => ['settlement', '201'],
+    'settlement dari payload expire' => ['settlement', '407'],
+    'capture dari payload deny' => ['capture', '202'],
+]);
+
 it('membaca nominal, referensi, dan waktu lunas dari notifikasi', function () {
     $notification = app(MidtransPaymentGateway::class)->parseNotification(signedMidtransPayload());
 

@@ -76,19 +76,23 @@ it('langsung gagal tanpa dicoba ulang jika mengulang tidak akan membantu', funct
     'perintah ditolak router' => fn () => new RouterCommandException('input does not match any value of profile'),
 ]);
 
-it('menandai pelanggan untuk ditinjau admin setelah semua percobaan habis', function (Closure $make, string $failedAction) {
+it('menandai pelanggan untuk ditinjau admin setelah semua percobaan habis tanpa menampilkan alamat router', function (Closure $make, string $failedAction) {
     [$job] = $make();
     $this->travelTo('2026-10-20 03:00');
 
-    $job->failed(new RouterUnreachableException('Router Pusat (10.0.0.1:8728) tidak bisa dijangkau: timeout'));
+    $job->failed(new RouterUnreachableException(
+        'Router Pusat (10.0.0.1:8728) tidak bisa dijangkau: timeout',
+        summary: 'Router tidak bisa dijangkau (Router Pusat).',
+    ));
 
     $customer = $job->customer->fresh();
     expect($customer->network_error_at->toDateTimeString())->toBe('2026-10-20 03:00:00')
-        ->and($customer->network_error)->toContain('tidak bisa dijangkau')
+        ->and($customer->network_error)->toEndWith('Router tidak bisa dijangkau (Router Pusat).')
         ->and(Customer::query()->hasNetworkError()->pluck('id')->all())->toBe([$customer->id]);
     $log = ActivityLog::query()->where('action', $failedAction)->sole();
     expect($log->subject_id)->toBe($customer->id)
-        ->and($log->user_id)->toBeNull();
+        ->and($log->user_id)->toBeNull()
+        ->and($log->properties)->toBe(['error' => 'Router tidak bisa dijangkau (Router Pusat).']);
 })->with(routerJobs());
 
 it('menandai pelanggan saat penonaktifan secret gagal total', function () {

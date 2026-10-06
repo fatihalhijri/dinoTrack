@@ -47,7 +47,8 @@ app/
 ├── Http/
 │   ├── Controllers/         Tipis: validasi → Action → response
 │   ├── Controllers/Webhooks/
-│   ├── Middleware/          EnsureUserIsActive (keluarkan user nonaktif), HandleInertiaRequests
+│   ├── Middleware/          EnsureUserIsActive (keluarkan user nonaktif), HandleInertiaRequests,
+│   │                        AddSecurityHeaders (global, juga route publik dan webhook)
 │   ├── Requests/            Form Request validasi + accessor bertipe untuk Action
 │   └── Resources/           API Resource untuk props Inertia (tanpa field sensitif)
 ├── Models/
@@ -87,8 +88,9 @@ Admin/kasir menandai "terpasang" → ActivateNewCustomer (transaksi)
 Pelanggan buka link tagihan → CreateQrisCharge (cache lock per invoice)
   → pakai ulang charge pending yang masih berlaku, atau buat charge baru (PaymentGateway)
 Pelanggan bayar → Payment gateway → POST /webhooks/payments/midtrans (routes/webhooks.php, tanpa session)
+  → body > 16 KB → 413 tanpa disimpan
+  → verifikasi signature (salah → simpan field audit saja, 403)
   → simpan payload ke payment_notifications
-  → verifikasi signature (salah → 403)
   → dispatch ProcessPaymentNotificationJob → respons 200 cepat
       → ProcessGatewayNotification (idempotent, dalam transaksi, lock pelanggan → invoice → charge)
           → normal: MarkInvoicePaid
@@ -215,6 +217,11 @@ backend (halaman React belum ada; nyalakan lagi di fase frontend).
 | 01:15 harian | Isolir otomatis |
 | 09:00 harian | Pengingat H-3 dan hari jatuh tempo |
 | tiap jam | Rekonsiliasi pembayaran pending ke gateway |
-| harian | Prune log lama, failed jobs lama |
+| 02:00 harian | `model:prune` (`payment_notifications`, retensi di docs/03) |
+| 02:10 harian | `queue:prune-failed` (failed jobs > 30 hari) |
 
 Semua jadwal memakai `->withoutOverlapping()` dan `->onOneServer()`.
+
+`retry_after` koneksi queue (bawaan 150 detik) wajib lebih lama dari `$timeout` job terlama
+(job router 100 detik) agar job yang masih berjalan tidak diambil worker lain; dijaga test
+`ConfigTest`. Audit keamanan dan keputusan turunannya: `docs/09-audit-keamanan.md`.

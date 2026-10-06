@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Concerns;
 
 use App\Exceptions\RouterCommandException;
+use App\Exceptions\RouterUnreachableException;
 use App\Exceptions\SecretNotFoundException;
 use App\Models\Customer;
 use App\Support\ActivityLogger;
@@ -40,11 +41,13 @@ trait HandlesRouterFailures
 
     /**
      * Tanda untuk admin: kolom `network_error_at` di pelanggan (dikosongkan saat perintah router
-     * berikutnya berhasil), log error, dan activity log.
+     * berikutnya berhasil), log error, dan activity log. Kolom dan activity log ikut tampil ke
+     * kasir/teknisi di halaman pelanggan, sehingga alamat router hanya masuk log aplikasi.
      */
     protected function flagRouterFailure(string $action, string $message, ?Throwable $exception): void
     {
-        $error = Str::limit(trim($message.' '.$exception?->getMessage()), 250);
+        $detail = $exception instanceof RouterUnreachableException ? $exception->summary() : $exception?->getMessage();
+        $error = Str::limit(trim($message.' '.$detail), 250);
 
         Log::error($message, [
             'customer_id' => $this->customer->id,
@@ -58,7 +61,7 @@ trait HandlesRouterFailures
         ]);
 
         app(ActivityLogger::class)->log($action, $this->customer, null, [
-            'error' => $exception?->getMessage(),
+            'error' => $detail,
         ]);
     }
 }

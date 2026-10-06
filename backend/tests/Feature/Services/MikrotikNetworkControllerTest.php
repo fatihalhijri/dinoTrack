@@ -139,6 +139,19 @@ it('mengubah login API yang ditolak menjadi RouterUnreachableException', functio
         ->toThrow(RouterUnreachableException::class, 'Router Pusat');
 });
 
+it('memberi ringkasan galat tanpa alamat router untuk data yang dilihat kasir dan teknisi', function () {
+    $network = mikrotik(new FakeRouterOsClient, new BadCredentialsException('Invalid user name or password'));
+    $router = Router::factory()->create(['name' => 'Router Pusat', 'host' => '10.20.30.40', 'port' => 8728]);
+
+    try {
+        $network->testConnection($router);
+        $this->fail('Seharusnya melempar RouterUnreachableException.');
+    } catch (RouterUnreachableException $exception) {
+        expect($exception->getMessage())->toContain('10.20.30.40:8728')
+            ->and($exception->summary())->toBe('Router tidak bisa dijangkau (Router Pusat).');
+    }
+});
+
 it('gagal cepat dalam sekali percobaan tanpa membocorkan password saat router tidak bisa dijangkau', function () {
     config(['services.mikrotik.connect_timeout' => 2]);
     // Port 1 di localhost tertutup: koneksi langsung ditolak tanpa menyentuh jaringan luar.
