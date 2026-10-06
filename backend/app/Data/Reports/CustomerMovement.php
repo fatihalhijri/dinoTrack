@@ -19,4 +19,18 @@ final readonly class CustomerMovement
         public int $terminatedCustomers,
         public int $isolatedCustomers,
     ) {}
+
+    /**
+     * @return array{from: string, to: string, new_customers: int, terminated_customers: int, isolated_customers: int}
+     */
+    public function toArray(): array
+    {
+        return [
+            'from' => $this->from->toDateString(),
+            'to' => $this->to->toDateString(),
+            'new_customers' => $this->newCustomers,
+            'terminated_customers' => $this->terminatedCustomers,
+            'isolated_customers' => $this->isolatedCustomers,
+        ];
+    }
 }

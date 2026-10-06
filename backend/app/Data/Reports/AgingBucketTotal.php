@@ -13,4 +13,17 @@ final readonly class AgingBucketTotal
         public int $invoiceCount,
         public int $amount,
     ) {}
+
+    /**
+     * @return array{bucket: string, label: string, invoice_count: int, amount: int}
+     */
+    public function toArray(): array
+    {
+        return [
+            'bucket' => $this->bucket->value,
+            'label' => $this->bucket->label(),
+            'invoice_count' => $this->invoiceCount,
+            'amount' => $this->amount,
+        ];
+    }
 }

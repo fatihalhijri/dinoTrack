@@ -43,6 +43,18 @@ class ActivateCustomerRequest extends FormRequest
     }
 
     /**
+     * Pesan bawaan before_or_equal menampilkan parameter mentah ("today").
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'installed_at.before_or_equal' => 'Tanggal pasang tidak boleh di masa depan.',
+        ];
+    }
+
+    /**
      * @return array<string, string>
      */
     public function attributes(): array

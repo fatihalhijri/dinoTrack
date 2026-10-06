@@ -40,6 +40,22 @@ class UpdateCustomerRequest extends FormRequest
     }
 
     /**
+     * Tanggal tagih hanya ikut jika dikirim (boleh diubah selama pelanggan `pending`).
+     *
+     * @return array{name: string, phone: string, address: string, odp: string|null, latitude: string|null, longitude: string|null, router_id: int, pppoe_username: string, notes: string|null, billing_day?: int}
+     */
+    public function customerData(): array
+    {
+        $data = $this->customerFields();
+
+        if ($this->filled('billing_day')) {
+            $data['billing_day'] = $this->integer('billing_day');
+        }
+
+        return $data;
+    }
+
+    /**
      * @return array<string, string>
      */
     public function messages(): array

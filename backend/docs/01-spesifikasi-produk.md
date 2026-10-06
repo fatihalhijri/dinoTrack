@@ -63,7 +63,12 @@ agar tetap berlaku untuk admin.
 - Login, logout, lupa password (dari starter kit)
 - Tidak ada registrasi publik dan tidak ada hapus akun sendiri; akun pegawai
   dibuat dan dikelola admin
-- Manajemen user dan role (admin saja)
+- Manajemen user dan role (admin saja): admin mengisi password awal (email
+  langsung terverifikasi). Pegawai yang keluar **dinonaktifkan** (tidak bisa
+  masuk, session yang berjalan diputus) agar jejak auditnya utuh; hapus hanya
+  untuk akun yang belum punya jejak aktivitas. Admin tidak bisa mengubah role,
+  menonaktifkan, atau menghapus akunnya sendiri, dan admin aktif terakhir
+  dilindungi (keputusan 2026-10-06)
 
 ### 2. Paket internet
 - CRUD paket: nama, kecepatan (contoh "20 Mbps"), harga bulanan, nama profil PPPoE di Mikrotik
@@ -120,8 +125,11 @@ agar tetap berlaku untuk admin.
 - Pelanggan baru, berhenti, terisolir
 - Ekspor CSV
 
+- Dashboard: ringkasan keuangan hanya untuk `reports.view`; kasir dan teknisi
+  melihat jumlah pelanggan per status dan pelanggan dengan galat router
+
 ### 12. Pengaturan
-- Profil usaha (nama, alamat, logo, nomor WA admin)
+- Profil usaha (nama, alamat, logo, nomor WA admin); logo menyusul di fase frontend
 - Aturan tagihan (lihat `docs/04-aturan-bisnis.md`)
 - Template pesan WhatsApp
 

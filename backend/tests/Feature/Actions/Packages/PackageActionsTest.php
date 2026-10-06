@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Packages\ActivatePackage;
 use App\Actions\Packages\CreatePackage;
 use App\Actions\Packages\DeactivatePackage;
 use App\Actions\Packages\DeletePackage;
@@ -70,6 +71,29 @@ it('menonaktifkan paket tanpa menyentuh subscription yang memakainya', function 
 it('menolak menonaktifkan paket yang sudah nonaktif', function () {
     app(DeactivatePackage::class)->handle(Package::factory()->inactive()->create());
 })->throws(ValidationException::class, 'Paket sudah nonaktif.');
+
+it('mengaktifkan kembali paket yang nonaktif', function () {
+    $package = Package::factory()->inactive()->create();
+
+    app(ActivatePackage::class)->handle($package);
+
+    expect($package->fresh()->is_active)->toBeTrue();
+    $this->assertDatabaseHas(ActivityLog::class, ['action' => 'package.activated', 'subject_id' => $package->id]);
+});
+
+it('menolak mengaktifkan paket yang sudah aktif', function () {
+    app(ActivatePackage::class)->handle(Package::factory()->create());
+})->throws(ValidationException::class, 'Paket sudah aktif.');
+
+it('mengabaikan status aktif saat mengubah paket', function () {
+    $package = Package::factory()->create();
+
+    app(UpdatePackage::class)->handle($package, ['name' => 'Home 30 Mbps', 'is_active' => false]);
+
+    expect($package->fresh())
+        ->name->toBe('Home 30 Mbps')
+        ->is_active->toBeTrue();
+});
 
 it('menghapus paket yang belum pernah dipakai', function () {
     $package = Package::factory()->create();

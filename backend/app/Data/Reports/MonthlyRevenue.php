@@ -19,4 +19,17 @@ final readonly class MonthlyRevenue
         public int $total,
         public int $paymentCount,
     ) {}
+
+    /**
+     * @return array{month: int, by_method: array<string, int>, total: int, payment_count: int}
+     */
+    public function toArray(): array
+    {
+        return [
+            'month' => $this->month,
+            'by_method' => $this->byMethod,
+            'total' => $this->total,
+            'payment_count' => $this->paymentCount,
+        ];
+    }
 }

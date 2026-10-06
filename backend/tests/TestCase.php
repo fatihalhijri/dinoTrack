@@ -18,10 +18,15 @@ abstract class TestCase extends BaseTestCase
      * notifikasi yang ikut ter-dispatch (aktivasi, tagihan terbit, pembayaran) tidak boleh
      * menghubungi layanan sungguhan. Test yang perlu memeriksa panggilan memakai helper
      * `fakeNetwork()` / `fakeMessages()`.
+     *
+     * Vite dimatikan agar test tidak bergantung pada aset hasil build (halaman React fase
+     * frontend belum ada di manifest).
      */
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->withoutVite();
 
         $this->app->instance(NetworkController::class, new FakeNetworkController);
         $this->app->instance(MessageSender::class, new FakeMessageSender);

@@ -83,7 +83,7 @@ final class SettingsRepository
     }
 
     /**
-     * Profil usaha belum punya halaman pengaturan (Tahap 09) dan tidak di-seed; selama kosong
+     * Profil usaha diisi admin lewat UpdateBusinessProfile dan tidak di-seed; selama kosong
      * dipakai APP_NAME.
      */
     public function businessName(): string
@@ -91,6 +91,13 @@ final class SettingsRepository
         $name = $this->get('business.name');
 
         return is_string($name) && trim($name) !== '' ? $name : (string) config('app.name');
+    }
+
+    public function businessAddress(): ?string
+    {
+        $address = $this->get('business.address');
+
+        return is_string($address) && trim($address) !== '' ? $address : null;
     }
 
     /**

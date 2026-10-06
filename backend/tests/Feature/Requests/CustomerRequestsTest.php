@@ -97,19 +97,24 @@ it('menolak tanggal tagih di luar 1 sampai 31', function (int $billingDay) {
         ->assertJsonPath('errors.billing_day.0', 'Tanggal tagih harus bernilai antara 1 sampai 31.');
 })->with([0, 32]);
 
-it('menolak username PPPoE yang sudah dipakai di router yang sama, termasuk pelanggan terhapus', function (bool $trashed) {
+it('menolak username PPPoE yang sudah dipakai di router yang sama', function () {
     $router = Router::factory()->create();
-    $existing = Customer::factory()->for($router)->create(['pppoe_username' => 'budi']);
-
-    if ($trashed) {
-        $existing->delete();
-    }
+    Customer::factory()->for($router)->create(['pppoe_username' => 'budi']);
 
     $this->actingAs(userWithRole(Role::Teknisi))
         ->postJson('/_test/customers', customerPayload(['router_id' => $router->id, 'pppoe_username' => 'budi']))
         ->assertUnprocessable()
         ->assertJsonPath('errors.pppoe_username.0', 'Username PPPoE sudah dipakai pelanggan lain di router ini.');
-})->with(['pelanggan aktif' => [false], 'pelanggan terhapus' => [true]]);
+});
+
+it('mengizinkan username PPPoE milik pelanggan yang dihapus karena salah input', function () {
+    $router = Router::factory()->create();
+    Customer::factory()->for($router)->create(['pppoe_username' => 'budi'])->delete();
+
+    $this->actingAs(userWithRole(Role::Teknisi))
+        ->postJson('/_test/customers', customerPayload(['router_id' => $router->id, 'pppoe_username' => 'budi']))
+        ->assertOk();
+});
 
 it('mengizinkan username PPPoE yang sama di router lain', function () {
     Customer::factory()->create(['pppoe_username' => 'budi']);

@@ -15,6 +15,12 @@
 | `billing.auto_isolate` | true | Isolir otomatis aktif |
 | `billing.auto_activate` | true | Aktivasi otomatis setelah lunas (hanya untuk isolir otomatis) |
 
+Batas yang bisa diisi admin (keputusan 2026-10-06): `due_days` 1–31,
+`grace_days` 0–30, `reminder_days_before` 0 sampai kurang dari `due_days`
+(pengingat pada atau sebelum hari terbit tidak pernah terkirim tepat waktu).
+Perubahan berlaku untuk proses berikutnya; invoice yang sudah terbit tidak
+dihitung ulang.
+
 ## Siklus tagihan
 
 1. Setiap langganan punya `billing_day` (1–28) yang diisi saat mendaftar dan
@@ -169,8 +175,10 @@ dengan benar dan tidak boleh tetap terisolir).
 - Uang tetap dicatat sebagai `payments` dengan `review_status = needs_review`
   dan `review_note` berisi alasannya.
 - Status invoice **tidak berubah** dan tidak ada aktivasi otomatis.
-- Admin meninjau dan menandai `resolved`. Pengembalian dana dilakukan manual
-  di luar sistem.
+- Admin meninjau dan menandai `resolved` dengan catatan (minimal 5 karakter).
+  Catatan ditambahkan di bawah alasan anomali di `review_note` (alasan asli
+  tetap terbaca) dan dicatat `payment.resolved`. Pengembalian dana dilakukan
+  manual di luar sistem.
 - Webhook tetap merespons 200 dan notifikasi mentah tetap tersimpan di
   `payment_notifications`.
 - Notifikasi refund/chargeback dari gateway hanya dicatat
@@ -273,6 +281,8 @@ terminated ──(berlangganan lagi)──> pending
 - Soft delete hanya untuk pelanggan `pending` (salah input atau batal pasang)
   yang belum punya invoice; subscription-nya ikut diakhiri. Pelanggan yang
   pernah terpasang harus diberhentikan agar secret di router dinonaktifkan.
+  Username PPPoE pelanggan yang dihapus boleh dipakai lagi untuk pendaftaran
+  yang benar (keputusan 2026-10-06).
 
 ## Hapus master data
 
@@ -349,5 +359,9 @@ atau sudah `sent`. Pesan yang `failed` tidak menghalangi kejadian berikutnya.
   seluruh aplikasi agar nomor pengirim tidak diblokir.
 - Penolakan provider (nomor tidak valid, token salah, kuota habis, perangkat
   terputus) langsung dicatat `failed` tanpa dicoba ulang; galat jaringan atau
-  server provider dicoba ulang hingga 3 kali. Kirim ulang manual oleh kasir
-  (`invoices.resend`) dikerjakan bersama controller (Tahap 09).
+  server provider dicoba ulang hingga 3 kali.
+- **Kirim ulang tagihan** oleh kasir/admin (`invoices.resend`): hanya invoice
+  `unpaid`/`overdue`, memakai template `invoice_issued`. Pesan lama yang sudah
+  `sent` tidak menghalangi, tetapi pesan yang masih `queued` menolak kiriman
+  baru (mencegah klik ganda); template nonaktif ditolak dengan pesan. Maksimal
+  6 permintaan per menit per pengguna, dicatat `invoice.resent`.

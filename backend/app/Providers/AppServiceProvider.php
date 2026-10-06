@@ -31,6 +31,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -166,6 +167,9 @@ class AppServiceProvider extends ServiceProvider
         DB::prohibitDestructiveCommands(
             app()->isProduction(),
         );
+
+        // Props Inertia tanpa pembungkus `data` (kecuali hasil paginate: data/links/meta).
+        JsonResource::withoutWrapping();
 
         Password::defaults(fn (): ?Password => app()->isProduction()
             ? Password::min(12)

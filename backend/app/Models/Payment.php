@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentReviewStatus;
 use App\Services\Reports\ReportService;
+use App\Support\SearchTerm;
 use Carbon\CarbonImmutable;
 use Database\Factories\PaymentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -88,6 +89,34 @@ class Payment extends Model
     protected function needsReview(Builder $query): void
     {
         $query->where('review_status', PaymentReviewStatus::NeedsReview);
+    }
+
+    /**
+     * Filter halaman daftar pembayaran; rentang tanggal mengikuti `paid_at` (inklusif).
+     *
+     * @param  Builder<self>  $query
+     * @param  array{search?: string|null, method?: PaymentMethod|null, review_status?: PaymentReviewStatus|null, from?: CarbonImmutable|null, to?: CarbonImmutable|null}  $filters
+     */
+    #[Scope]
+    protected function applyFilters(Builder $query, array $filters): void
+    {
+        $search = $filters['search'] ?? null;
+        $method = $filters['method'] ?? null;
+        $reviewStatus = $filters['review_status'] ?? null;
+        $from = $filters['from'] ?? null;
+        $to = $filters['to'] ?? null;
+
+        $query
+            ->when($search !== null, fn (Builder $query) => $query->where(function (Builder $query) use ($search): void {
+                $pattern = SearchTerm::contains((string) $search);
+                $query->where('reference', 'like', $pattern)
+                    ->orWhereHas('invoice', fn (Builder $query) => $query->where('number', 'like', $pattern)
+                        ->orWhereHas('customer', fn (Builder $query) => $query->where('code', 'like', $pattern)->orWhere('name', 'like', $pattern)));
+            }))
+            ->when($method !== null, fn (Builder $query) => $query->where('method', $method))
+            ->when($reviewStatus !== null, fn (Builder $query) => $query->where('review_status', $reviewStatus))
+            ->when($from !== null, fn (Builder $query) => $query->where('paid_at', '>=', $from?->startOfDay()))
+            ->when($to !== null, fn (Builder $query) => $query->where('paid_at', '<=', $to?->endOfDay()));
     }
 
     /**

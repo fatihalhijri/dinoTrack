@@ -65,7 +65,9 @@ return [
 
     'testing' => [
 
-        'ensure_pages_exist' => true,
+        // Fase backend: halaman React belum dibuat (kontrak di docs/08-kontrak-halaman.md).
+        // Nyalakan lagi saat fase frontend dimulai.
+        'ensure_pages_exist' => false,
 
     ],
 

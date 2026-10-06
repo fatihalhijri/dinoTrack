@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Harga baru hanya berlaku untuk langganan baru; harga subscription yang sudah ada terkunci.
- * Perubahan profil Mikrotik tidak dikirim ke router di sini.
+ * Perubahan profil Mikrotik tidak dikirim ke router di sini. Status aktif diubah lewat
+ * ActivatePackage/DeactivatePackage agar tercatat dengan aksi yang jelas.
  */
 final class UpdatePackage
 {
@@ -21,12 +22,12 @@ final class UpdatePackage
     ) {}
 
     /**
-     * @param  array{name?: string, speed_label?: string, price?: int, mikrotik_profile?: string, is_active?: bool, description?: string|null}  $attributes
+     * @param  array{name?: string, speed_label?: string, price?: int, mikrotik_profile?: string, description?: string|null}  $attributes
      */
     public function handle(Package $package, array $attributes, ?User $by = null): Package
     {
         return DB::transaction(function () use ($package, $attributes, $by): Package {
-            $package->fill(Arr::only($attributes, [...CreatePackage::FIELDS, 'is_active']));
+            $package->fill(Arr::only($attributes, CreatePackage::FIELDS));
             $changes = $this->logger->pendingChanges($package);
 
             if ($changes === []) {

@@ -17,6 +17,19 @@ use Illuminate\Support\Facades\Log;
 final class MessageTemplateRenderer
 {
     /**
+     * Placeholder yang dikenali beserta artinya (ditampilkan di halaman pengaturan template).
+     *
+     * @var array<string, string>
+     */
+    public const array PLACEHOLDERS = [
+        '{nama}' => 'Nama pelanggan',
+        '{nomor_invoice}' => 'Nomor tagihan',
+        '{total}' => 'Total tagihan, contoh Rp150.000',
+        '{jatuh_tempo}' => 'Tanggal jatuh tempo, contoh 17 Oktober 2026',
+        '{link_bayar}' => 'Link halaman tagihan dan pembayaran QRIS',
+    ];
+
+    /**
      * @return string|null null jika template dinonaktifkan admin atau belum ada (seeder belum dijalankan)
      */
     public function render(MessageTemplateKey $key, Customer $customer, Invoice $invoice): ?string

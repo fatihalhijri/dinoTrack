@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Packages;
 
+use App\Concerns\PackageValidationRules;
 use App\Models\Package;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdatePackageRequest extends FormRequest
 {
+    use PackageValidationRules;
+
     public function authorize(): bool
     {
         $package = $this->route('package');
@@ -22,10 +25,7 @@ class UpdatePackageRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            ...StorePackageRequest::packageRules(),
-            'is_active' => ['required', 'boolean'],
-        ];
+        return $this->packageRules();
     }
 
     /**
@@ -33,6 +33,6 @@ class UpdatePackageRequest extends FormRequest
      */
     public function attributes(): array
     {
-        return StorePackageRequest::packageAttributes();
+        return $this->packageAttributes();
     }
 }

@@ -32,6 +32,18 @@ class StoreCustomerRequest extends FormRequest
     }
 
     /**
+     * @return array{name: string, phone: string, address: string, odp: string|null, latitude: string|null, longitude: string|null, router_id: int, pppoe_username: string, notes: string|null, package_id: int, billing_day: int}
+     */
+    public function customerData(): array
+    {
+        return [
+            ...$this->customerFields(),
+            'package_id' => $this->integer('package_id'),
+            'billing_day' => $this->integer('billing_day'),
+        ];
+    }
+
+    /**
      * @return array<string, string>
      */
     public function messages(): array

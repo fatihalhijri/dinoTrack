@@ -58,6 +58,15 @@ it('mengizinkan username PPPoE yang sama di router lain', function () {
     expect($other->exists)->toBeTrue();
 });
 
+it('mengizinkan username PPPoE pelanggan yang di-soft-delete dipakai lagi di router yang sama', function () {
+    $router = Router::factory()->create();
+    Customer::factory()->for($router)->create(['pppoe_username' => 'budi'])->delete();
+
+    $replacement = Customer::factory()->for($router)->create(['pppoe_username' => 'budi']);
+
+    expect($replacement->exists)->toBeTrue();
+});
+
 it('menyimpan pelanggan yang dihapus sebagai soft delete', function () {
     $customer = Customer::factory()->create();
 

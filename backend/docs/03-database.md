@@ -44,6 +44,10 @@ subscription aktif (`Customer::activeSubscription()`).
 ### users
 Bawaan Laravel + role lewat spatie/laravel-permission (`admin`, `kasir`, `teknisi`).
 
+| Kolom tambahan | Tipe | Catatan |
+|---|---|---|
+| deactivated_at | timestamp nullable | pegawai yang keluar; tidak bisa masuk dan session berjalan diputus (migration `2026_10_06_213304`) |
+
 ### packages
 | Kolom | Tipe | Catatan |
 |---|---|---|
@@ -77,7 +81,8 @@ Bawaan Laravel + role lewat spatie/laravel-permission (`admin`, `kasir`, `teknis
 | odp | string nullable | |
 | latitude, longitude | decimal(10,7) nullable | |
 | router_id | foreignId | |
-| pppoe_username | string | unique per router |
+| pppoe_username | string | unique per router di antara pelanggan yang tidak dihapus |
+| active_pppoe_username | string nullable, **generated** | `IF(deleted_at IS NULL, pppoe_username, NULL)`; jangan diisi aplikasi (migration `2026_10_06_213303`) |
 | status | string | `pending`, `active`, `isolated`, `terminated` (`CustomerStatus`) |
 | installed_at | date nullable | |
 | isolated_at | timestamp nullable | |
@@ -88,7 +93,9 @@ Bawaan Laravel + role lewat spatie/laravel-permission (`admin`, `kasir`, `teknis
 | notes | text nullable | |
 | softDeletes | | hanya untuk salah input; pelanggan yang sudah punya invoice tidak boleh dihapus (gunakan `terminated`) |
 
-Index: `status`, unique (`router_id`, `pppoe_username`).
+Index: `status`, unique (`router_id`, `active_pppoe_username`), index (`router_id`,
+`pppoe_username`). Username pelanggan yang di-soft-delete karena salah input boleh
+dipakai lagi (sebelumnya unique (`router_id`, `pppoe_username`) mencakup baris terhapus).
 
 ### subscriptions
 | Kolom | Tipe | Catatan |
@@ -238,7 +245,9 @@ adalah kontrak: jangan diganti tanpa menyesuaikan `ReportService`.
 
 Diisi `SettingSeeder` dengan default `billing.*` dari `docs/04-aturan-bisnis.md`
 (nilai yang sudah diubah admin tidak ditimpa). `billing.penalty_amount` tidak
-di-seed karena denda tidak dipakai di v1.
+di-seed karena denda tidak dipakai di v1. Profil usaha (`business.name`,
+`business.address`, `business.whatsapp`) diisi admin dan tidak di-seed; nilai
+yang dikosongkan menghapus barisnya (kolom `value` NOT NULL).
 
 ### sequences
 Penghitung berurutan yang dibaca dengan `lockForUpdate` agar aman dari race

@@ -60,7 +60,7 @@ it('hanya admin yang boleh menambah dan mengubah paket', function (Role $role, i
     $package = Package::factory()->create();
 
     $this->actingAs($user)->postJson('/_test/packages', packagePayload())->assertStatus($status);
-    $this->actingAs($user)->putJson("/_test/packages/{$package->id}", packagePayload(['is_active' => true]))->assertStatus($status);
+    $this->actingAs($user)->putJson("/_test/packages/{$package->id}", packagePayload())->assertStatus($status);
 })->with([
     'admin' => [Role::Admin, 200],
     'kasir' => [Role::Kasir, 403],
@@ -82,13 +82,13 @@ it('menolak harga paket berupa pecahan', function () {
         ->assertJsonPath('errors.price.0', 'Harga harus berupa bilangan bulat.');
 });
 
-it('mewajibkan status aktif saat mengubah paket', function () {
+it('tidak menerima status aktif lewat ubah paket karena punya aksi sendiri', function () {
     $package = Package::factory()->create();
 
     $this->actingAs(userWithRole(Role::Admin))
-        ->putJson("/_test/packages/{$package->id}", packagePayload())
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors('is_active');
+        ->putJson("/_test/packages/{$package->id}", packagePayload(['is_active' => false]))
+        ->assertOk()
+        ->assertJsonMissingPath('is_active');
 });
 
 it('hanya admin yang boleh menambah dan mengubah router', function (Role $role, int $status) {

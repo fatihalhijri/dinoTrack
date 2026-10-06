@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\InvoiceStatus;
 use App\Services\Reports\ReportService;
+use App\Support\SearchTerm;
 use Carbon\CarbonImmutable;
 use Database\Factories\InvoiceFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -157,6 +158,34 @@ class Invoice extends Model
     {
         $query->whereIn($query->qualifyColumn('status'), InvoiceStatus::outstanding())
             ->where($query->qualifyColumn('due_at'), '<', $today->toDateString());
+    }
+
+    /**
+     * Filter halaman daftar tagihan. Periode `YYYY-MM` dicocokkan dengan bulan `period_start`.
+     *
+     * @param  Builder<self>  $query
+     * @param  array{search?: string|null, status?: InvoiceStatus|null, period?: string|null, customer_id?: int|null}  $filters
+     */
+    #[Scope]
+    protected function applyFilters(Builder $query, array $filters): void
+    {
+        $search = $filters['search'] ?? null;
+        $status = $filters['status'] ?? null;
+        $period = $filters['period'] ?? null;
+        $customerId = $filters['customer_id'] ?? null;
+
+        $query
+            ->when($search !== null, fn (Builder $query) => $query->where(function (Builder $query) use ($search): void {
+                $pattern = SearchTerm::contains((string) $search);
+                $query->where('number', 'like', $pattern)
+                    ->orWhereHas('customer', fn (Builder $query) => $query->where('code', 'like', $pattern)->orWhere('name', 'like', $pattern));
+            }))
+            ->when($status !== null, fn (Builder $query) => $query->where('status', $status))
+            ->when($period !== null, function (Builder $query) use ($period): void {
+                $month = CarbonImmutable::parse($period.'-01');
+                $query->whereBetween('period_start', [$month->startOfMonth()->toDateString(), $month->endOfMonth()->toDateString()]);
+            })
+            ->when($customerId !== null, fn (Builder $query) => $query->where('customer_id', $customerId));
     }
 
     /**

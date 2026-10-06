@@ -17,17 +17,20 @@
 ```
 app/
 ├── Actions/                 Satu kelas = satu aksi bisnis, method handle()
-│   ├── Packages/            CreatePackage, UpdatePackage, DeactivatePackage, DeletePackage
+│   ├── Packages/            CreatePackage, UpdatePackage, ActivatePackage, DeactivatePackage, DeletePackage
 │   ├── Routers/             CreateRouter, UpdateRouter, DeleteRouter, TestRouterConnection
 │   ├── Customers/           CreateCustomer, UpdateCustomer, ChangeCustomerPackage, TerminateCustomer,
 │   │                        ReactivateCustomer, DeleteCustomer, ActivateNewCustomer
 │   ├── Invoices/            GenerateInvoiceForSubscription, GenerateMonthlyInvoices,
-│   │                        IssueInvoice, MarkOverdueInvoices, CancelInvoice, ReissueInvoice
+│   │                        IssueInvoice, MarkOverdueInvoices, CancelInvoice, ReissueInvoice,
+│   │                        ResendInvoice
 │   ├── Payments/            CreateQrisCharge, MarkInvoicePaid, RecordManualPayment,
-│   │                        ProcessGatewayNotification, ReconcilePendingCharges
+│   │                        ProcessGatewayNotification, ReconcilePendingCharges, ResolvePayment
 │   ├── Network/             IsolateCustomer, ActivateCustomer, ApplyCustomerProfile,
 │   │                        IsolateOverdueCustomers, IsolateCustomerManually, ActivateCustomerManually
-│   └── Notifications/       NotifyCustomer, SendInvoiceReminders
+│   ├── Notifications/       NotifyCustomer, SendInvoiceReminders
+│   ├── Users/               CreateUser, UpdateUser, DeactivateUser, ReactivateUser, DeleteUser
+│   └── Settings/            UpdateBusinessProfile, UpdateBillingSettings, UpdateMessageTemplate
 ├── Contracts/               Interface integrasi
 │   ├── PaymentGateway.php
 │   ├── NetworkController.php
@@ -44,13 +47,15 @@ app/
 ├── Http/
 │   ├── Controllers/         Tipis: validasi → Action → response
 │   ├── Controllers/Webhooks/
-│   └── Requests/            Form Request validasi
+│   ├── Middleware/          EnsureUserIsActive (keluarkan user nonaktif), HandleInertiaRequests
+│   ├── Requests/            Form Request validasi + accessor bertipe untuk Action
+│   └── Resources/           API Resource untuk props Inertia (tanpa field sensitif)
 ├── Models/
 ├── Policies/
 ├── Support/                 Helper (Money, BillingPeriod, ProrataCalculator, InvoiceNumberGenerator,
 │                            SequenceGenerator, SettingsRepository, ActivityLogger, PhoneNumber,
 │                            IsolationRules, CustomerNetworkLock, MessageTemplateRenderer,
-│                            InvoicePaymentLink)
+│                            InvoicePaymentLink, LastAdminGuard, SearchTerm)
 └── Data/                    DTO sederhana (readonly class) bila perlu; Data/Reports untuk laporan
 tests/
 ├── Feature/                 Alur end-to-end (HTTP, job, scheduler)
@@ -167,6 +172,19 @@ ReportCsvExporter → ditulis ke stream per chunk lazyById(1000), UTF-8 BOM, pem
   sel berawalan = + - @ diberi awalan ' ; download() membungkus jadi StreamedResponse
 ```
 
+### Lapisan HTTP admin (Tahap 09)
+```
+routes/web.php, grup auth + verified (+ EnsureUserIsActive di grup web)
+  → PermissionMiddleware::using(<permission dasar modul>)    (packages.view, customers.view, ...)
+  → Form Request: authorize() lewat Policy + validasi + accessor bertipe (input form selalu string)
+    atau Gate::authorize() untuk aksi tanpa input
+  → Action (aturan bisnis dan status data; pelanggaran = ValidationException → errors Inertia)
+  → Inertia::render('<modul>/<halaman>', props dari API Resource) atau redirect + flash.toast
+```
+Daftar halaman dan props: `docs/08-kontrak-halaman.md`. `JsonResource::withoutWrapping()`
+(hasil paginate tetap `data`/`links`/`meta`). Status koneksi pelanggan memanggil router lewat
+deferred prop agar halaman tidak menunggu router.
+
 ## Binding interface
 
 Di `AppServiceProvider` (atau provider khusus):
@@ -184,7 +202,9 @@ Di test: `$this->app->instance(PaymentGateway::class, new FakePaymentGateway);`
 berjalan di queue `sync` tidak pernah menghubungi layanan sungguhan; test yang
 memeriksa panggilan memakai helper `fakeNetwork()` / `fakeMessages()`. Test
 mematikan rate limit WhatsApp (`WHATSAPP_SECONDS_PER_MESSAGE=0` di
-`phpunit.xml`) karena queue `sync` membuang job yang ditahan.
+`phpunit.xml`) karena queue `sync` membuang job yang ditahan. `Tests\TestCase` juga
+memanggil `withoutVite()`, dan `inertia.testing.ensure_pages_exist` dimatikan selama fase
+backend (halaman React belum ada; nyalakan lagi di fase frontend).
 
 ## Jadwal (routes/console.php)
 
