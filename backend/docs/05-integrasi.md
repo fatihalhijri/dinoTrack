@@ -196,6 +196,44 @@ interface MessageSender
 - Risiko: nomor bisa diblokir WhatsApp jika kirim massal. Beri jeda antar
   pesan (rate limit queue) dan hindari pesan identik ke banyak nomor sekaligus.
 
+Catatan implementasi (dicocokkan dengan dokumentasi resmi Fonnte pada 2026-10-06):
+
+- Token dikirim langsung di header `Authorization`, **tanpa** `Bearer`. Body
+  dikirim sebagai form. `countryCode` tidak dikirim (bawaan `62`, nomor sudah
+  dinormalisasi).
+- Sukses: `{"status": true, "detail": "...", "id": ["80367170"], "process": "pending", ...}`;
+  `id[0]` disimpan sebagai `message_logs.provider_message_id`. `process: pending`
+  berarti pesan masuk antrean Fonnte, belum tentu sampai ke pelanggan (status
+  pengiriman akhir hanya lewat webhook Fonnte, belum dipakai di v1).
+- Gagal selalu `status: false` + `reason` (`token invalid`, `target invalid`,
+  `insufficient quota`, ...). Contoh di dokumentasi kadang memakai `Status`
+  berhuruf besar, jadi keduanya dibaca. HTTP status untuk galat tidak
+  didokumentasikan; keputusan diambil dari body.
+- `connectOnly` bawaan `true`: jika perangkat Fonnte terputus, request ditolak
+  (`status: false`) dan pesan tidak disimpan Fonnte. Pesan dicatat `failed`
+  agar terlihat admin, bukan tertunda diam-diam.
+- Penolakan (`status: false`) → `MessageResult` gagal, tidak dicoba ulang.
+  Galat koneksi, HTTP 429/5xx, atau body bukan JSON → `MessageSendException`,
+  dicoba ulang queue. HTTP client **tanpa** retry otomatis: timeout bisa
+  terjadi setelah Fonnte menerima pesan, sehingga retry langsung berarti pesan
+  ganda. Risiko yang sama tetap ada pada retry queue dan diterima.
+- Connect timeout 5 detik, timeout 15 detik. Token tidak pernah masuk pesan galat.
+
+### Driver `log` (development)
+
+`WHATSAPP_DRIVER=log` hanya menulis pesan ke log aplikasi tanpa mengirim, agar
+development tanpa token Fonnte tidak membuat job gagal.
+
+### Antrean dan rate limit
+
+- `SendWhatsAppMessage` memakai middleware `RateLimited('whatsapp')`: satu
+  pesan per `WHATSAPP_SECONDS_PER_MESSAGE` detik (default 5; 0 mematikan
+  pembatasan, dipakai di test) untuk seluruh aplikasi.
+- Setiap penahanan oleh rate limit dihitung sebagai percobaan job, sehingga
+  job memakai `retryUntil()` 6 jam (bukan `$tries`) dan `$maxExceptions = 3`
+  dengan backoff 60 s / 5 m untuk galat sungguhan. Antrean ratusan pesan di
+  hari tagih tidak kehabisan percobaan hanya karena menunggu giliran.
+
 ### Rencana: WhatsApp Business API resmi
 
 Interface yang sama memungkinkan menambah driver resmi (Meta Cloud API)
@@ -205,6 +243,7 @@ tanpa mengubah kode bisnis. Pilih driver lewat `config/services.php`.
 
 ```
 WHATSAPP_DRIVER=fonnte
+WHATSAPP_SECONDS_PER_MESSAGE=5
 FONNTE_TOKEN=
 ```
 

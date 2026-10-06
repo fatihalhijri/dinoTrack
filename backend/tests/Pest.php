@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Contracts\MessageSender;
 use App\Contracts\NetworkController;
+use App\Contracts\PaymentGateway;
 use App\Data\GatewayNotification;
 use App\Enums\InvoiceStatus;
 use App\Enums\PaymentChargeStatus;
@@ -18,7 +20,9 @@ use Database\Factories\CustomerFactory;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Fakes\FakeMessageSender;
 use Tests\Fakes\FakeNetworkController;
+use Tests\Fakes\FakePaymentGateway;
 use Tests\TestCase;
 
 /*
@@ -76,6 +80,28 @@ function fakeNetwork(): FakeNetworkController
     app()->instance(NetworkController::class, $network);
 
     return $network;
+}
+
+/**
+ * Payment gateway palsu baru yang dipasang di container.
+ */
+function fakeGateway(): FakePaymentGateway
+{
+    $gateway = new FakePaymentGateway;
+    app()->instance(PaymentGateway::class, $gateway);
+
+    return $gateway;
+}
+
+/**
+ * WhatsApp palsu baru yang dipasang di container (menggantikan bawaan TestCase).
+ */
+function fakeMessages(): FakeMessageSender
+{
+    $messages = new FakeMessageSender;
+    app()->instance(MessageSender::class, $messages);
+
+    return $messages;
 }
 
 /**

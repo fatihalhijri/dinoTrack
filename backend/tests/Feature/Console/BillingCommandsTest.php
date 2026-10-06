@@ -9,8 +9,10 @@ use App\Exceptions\PaymentGatewayException;
 use App\Jobs\IsolateCustomerJob;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\MessageLog;
 use App\Models\PaymentCharge;
 use App\Models\Setting;
+use Database\Seeders\MessageTemplateSeeder;
 use Illuminate\Console\Command;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
@@ -73,7 +75,7 @@ it('menolak --date di production', function (string $command) {
     $this->artisan($command, ['--date' => '2026-10-10'])
         ->expectsOutputToContain('tidak boleh dipakai di production')
         ->assertExitCode(Command::INVALID);
-})->with(['billing:generate-invoices', 'billing:mark-overdue', 'billing:isolate-overdue']);
+})->with(['billing:generate-invoices', 'billing:mark-overdue', 'billing:isolate-overdue', 'billing:send-reminders']);
 
 it('menjadwalkan command tagihan sesuai docs/02 tanpa tumpang tindih dan di satu server', function (string $command, string $expression) {
     $event = collect(app(Schedule::class)->events())
@@ -89,6 +91,7 @@ it('menjadwalkan command tagihan sesuai docs/02 tanpa tumpang tindih dan di satu
     'generate tagihan 00:10' => ['billing:generate-invoices', '10 0 * * *'],
     'tandai overdue 01:00' => ['billing:mark-overdue', '0 1 * * *'],
     'isolir 01:15 setelah overdue' => ['billing:isolate-overdue', '15 1 * * *'],
+    'pengingat 09:00' => ['billing:send-reminders', '0 9 * * *'],
     'rekonsiliasi pembayaran tiap jam' => ['billing:reconcile-payments', '0 * * * *'],
 ]);
 
@@ -169,4 +172,23 @@ it('memberi tahu bahwa isolir otomatis dimatikan', function () {
         ->assertSuccessful();
 
     Queue::assertNothingPushed();
+});
+
+it('menjadwalkan pengingat untuk tanggal simulasi', function () {
+    $this->seed(MessageTemplateSeeder::class);
+    invoiceDueAt(customerOnProfile(Customer::factory()->active()), '2026-10-12', InvoiceStatus::Unpaid);
+
+    $this->artisan('billing:send-reminders', ['--date' => '2026-10-09'])
+        ->expectsOutputToContain('Pengingat 2026-10-09: 1 dijadwalkan, 0 dilewati, 0 gagal.')
+        ->assertSuccessful();
+});
+
+it('keluar dengan kode gagal dan menyebut invoice yang pengingatnya gagal dijadwalkan', function () {
+    $this->seed(MessageTemplateSeeder::class);
+    $invoice = invoiceDueAt(customerOnProfile(Customer::factory()->active()), '2026-10-09', InvoiceStatus::Unpaid);
+    MessageLog::creating(fn () => throw new RuntimeException('Simulasi galat.'));
+
+    $this->artisan('billing:send-reminders', ['--date' => '2026-10-09'])
+        ->expectsOutputToContain("Invoice gagal (detail di log): {$invoice->id}")
+        ->assertFailed();
 });

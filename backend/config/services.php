@@ -49,13 +49,18 @@ return [
         'socket_timeout' => 10,
     ],
 
+    // Driver: `fonnte`, atau `log` untuk development (pesan hanya ditulis ke log).
     'whatsapp' => [
         'driver' => env('WHATSAPP_DRIVER', 'fonnte'),
+        // Jeda minimal antarpesan agar nomor pengirim tidak diblokir; 0 mematikan pembatasan.
+        'seconds_per_message' => (int) env('WHATSAPP_SECONDS_PER_MESSAGE', 5),
     ],
 
     'fonnte' => [
         'token' => env('FONNTE_TOKEN'),
         'base_url' => 'https://api.fonnte.com',
+        'connect_timeout' => 5,
+        'timeout' => 15,
     ],
 
     'slack' => [

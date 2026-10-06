@@ -23,6 +23,7 @@ use App\Models\Setting;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Services\Messaging\FonnteMessageSender;
+use App\Services\Messaging\LogMessageSender;
 use App\Services\Network\MikrotikNetworkController;
 use App\Services\Payment\MidtransPaymentGateway;
 use App\Support\SettingsRepository;
@@ -48,6 +49,10 @@ class AppServiceProvider extends ServiceProvider
 
     public const int ISOLATION_LOOKUPS_PER_CODE_PER_HOUR = 10;
 
+    public const int PUBLIC_INVOICE_VIEWS_PER_MINUTE = 120;
+
+    public const int PUBLIC_INVOICE_PAYMENTS_PER_MINUTE = 10;
+
     /**
      * Register any application services.
      */
@@ -58,6 +63,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(NetworkController::class, MikrotikNetworkController::class);
         $this->app->bind(MessageSender::class, fn (): MessageSender => match (config('services.whatsapp.driver')) {
             'fonnte' => $this->app->make(FonnteMessageSender::class),
+            'log' => $this->app->make(LogMessageSender::class),
             default => throw new InvalidArgumentException('Driver WhatsApp tidak dikenal: '.config('services.whatsapp.driver')),
         });
     }
@@ -80,6 +86,22 @@ class AppServiceProvider extends ServiceProvider
     {
         RateLimiter::for('webhooks', fn (Request $request): Limit => Limit::perMinute(self::WEBHOOK_RATE_LIMIT_PER_MINUTE)->by($request->ip()));
         RateLimiter::for('isolation-page', $this->isolationPageLimits(...));
+        RateLimiter::for('public-invoice', fn (Request $request): Limit => Limit::perMinute(self::PUBLIC_INVOICE_VIEWS_PER_MINUTE)->by($request->ip()));
+        // Path memuat ID invoice; throttle berjalan sebelum route model binding.
+        RateLimiter::for('public-invoice-pay', fn (Request $request): Limit => Limit::perMinute(self::PUBLIC_INVOICE_PAYMENTS_PER_MINUTE)
+            ->by($request->ip().'|'.$request->path()));
+        RateLimiter::for('whatsapp', $this->whatsappLimit(...));
+    }
+
+    /**
+     * Satu nomor pengirim untuk seluruh aplikasi, jadi batasnya global (bukan per pelanggan):
+     * paling banyak satu pesan per `seconds_per_message` detik agar nomor tidak diblokir WhatsApp.
+     */
+    protected function whatsappLimit(): Limit
+    {
+        $seconds = (int) config('services.whatsapp.seconds_per_message');
+
+        return $seconds > 0 ? Limit::perSecond(1, $seconds)->by('whatsapp-sender') : Limit::none();
     }
 
     /**

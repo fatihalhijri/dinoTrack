@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Actions\Payments\CreateQrisCharge;
-use App\Contracts\PaymentGateway;
 use App\Data\GatewayNotification;
 use App\Enums\InvoiceStatus;
 use App\Enums\PaymentChargeStatus;
@@ -11,15 +10,6 @@ use App\Exceptions\PaymentGatewayException;
 use App\Models\Invoice;
 use App\Models\PaymentCharge;
 use Illuminate\Validation\ValidationException;
-use Tests\Fakes\FakePaymentGateway;
-
-function fakeGateway(): FakePaymentGateway
-{
-    $gateway = new FakePaymentGateway;
-    app()->instance(PaymentGateway::class, $gateway);
-
-    return $gateway;
-}
 
 function invoiceToPay(): Invoice
 {

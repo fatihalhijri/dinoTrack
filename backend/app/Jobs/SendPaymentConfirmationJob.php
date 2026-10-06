@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Actions\Notifications\NotifyCustomer;
+use App\Enums\MessageTemplateKey;
 use App\Models\Payment;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -11,8 +13,8 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Mengirim pesan WhatsApp `payment_received` untuk pembayaran normal (bukan anomali).
- * Pengiriman diisi di Tahap 07; job sudah di-dispatch dari MarkInvoicePaid.
+ * Menjadwalkan pesan WhatsApp `payment_received` untuk pembayaran normal (bukan anomali),
+ * di-dispatch dari MarkInvoicePaid.
  */
 final class SendPaymentConfirmationJob implements ShouldQueue
 {
@@ -29,9 +31,11 @@ final class SendPaymentConfirmationJob implements ShouldQueue
         public Payment $payment,
     ) {}
 
-    public function handle(): void
+    public function handle(NotifyCustomer $notify): void
     {
-        // Diisi di Tahap 07.
+        $invoice = $this->payment->invoice;
+
+        $notify->handle($invoice->customer, MessageTemplateKey::PaymentReceived, $invoice);
     }
 
     public function failed(?Throwable $exception): void

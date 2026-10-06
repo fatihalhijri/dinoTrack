@@ -4,15 +4,23 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Actions\Notifications\NotifyCustomer;
+use App\Enums\CustomerStatus;
+use App\Enums\IsolationReason;
+use App\Enums\MessageTemplateKey;
 use App\Models\Customer;
+use App\Support\SettingsRepository;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Mengirim pesan WhatsApp `isolated` setelah isolir berhasil di router.
- * Pengiriman diisi di Tahap 07; job sudah di-dispatch dari IsolateCustomer.
+ * Menjadwalkan pesan WhatsApp `isolated` setelah isolir berhasil di router (dari IsolateCustomer).
+ *
+ * Hanya untuk isolir karena tunggakan: template-nya menyebut tagihan yang belum dibayar, sedangkan
+ * isolir manual bisa karena alasan lain. Invoice yang disebut adalah tunggakan lewat toleransi
+ * yang paling lama; pelanggan yang sudah membayar atau diaktifkan sebelum job berjalan dilewati.
  */
 final class SendIsolationNotificationJob implements ShouldQueue
 {
@@ -29,9 +37,23 @@ final class SendIsolationNotificationJob implements ShouldQueue
         public Customer $customer,
     ) {}
 
-    public function handle(): void
+    public function handle(NotifyCustomer $notify, SettingsRepository $settings): void
     {
-        // Diisi di Tahap 07.
+        if ($this->customer->status !== CustomerStatus::Isolated || $this->customer->isolation_reason !== IsolationReason::Overdue) {
+            return;
+        }
+
+        $invoice = $this->customer->invoices()
+            ->pastGracePeriod(today(), $settings->graceDays())
+            ->orderBy('due_at')
+            ->orderBy('id')
+            ->first();
+
+        if ($invoice === null) {
+            return;
+        }
+
+        $notify->handle($this->customer, MessageTemplateKey::Isolated, $invoice);
     }
 
     public function failed(?Throwable $exception): void

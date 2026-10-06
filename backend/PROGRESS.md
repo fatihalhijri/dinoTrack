@@ -2,7 +2,7 @@
 
 Status: ⬜ belum · 🟨 sedang dikerjakan · ✅ selesai
 
-Tahap berikutnya: **Tahap 06** (Mikrotik: isolir & aktivasi).
+Tahap berikutnya: **Tahap 08** (Laporan & metrik dashboard).
 
 | Tahap | Nama | Status | Tanggal | Catatan |
 |---|---|---|---|---|
@@ -12,8 +12,8 @@ Tahap berikutnya: **Tahap 06** (Mikrotik: isolir & aktivasi).
 | 03 | Master data (paket, router, pelanggan) | ✅ | 2026-10-05 | 14 Action + 9 Form Request + `DisableCustomerSecretJob`, kode pelanggan teruji aman di 4 proses paralel, pesan validasi Bahasa Indonesia; Pint, PHPStan, 383 test hijau |
 | 04 | Tagihan otomatis | ✅ | 2026-10-05 | Generator catch-up tanpa duplikat, prorata integer, nomor invoice per bulan, overdue, batal + terbit ulang, aktivasi pelanggan dengan tagihan pertama, jadwal 00:10/01:00; Pint, PHPStan, 518 test hijau |
 | 05 | Pembayaran manual & QRIS | ✅ | 2026-10-05 | Pembayaran manual, QRIS Midtrans (HTTP client), webhook idempotent lewat queue, rekonsiliasi per jam, dan pemicu aktivasi; balapan notifikasi teruji di 4 proses paralel; Pint, PHPStan, 621 test hijau |
-| 06 | Mikrotik: isolir & aktivasi | 🟨 | | |
-| 07 | Notifikasi WhatsApp | ⬜ | | |
+| 06 | Mikrotik: isolir & aktivasi | ✅ | 2026-10-06 | RouterOS API dengan timeout pendek dan deteksi `!trap`, isolir/aktivasi router-dulu dengan cek ulang dan lock per pelanggan, job 4 percobaan + tanda `network_error_at`, isolir otomatis 01:15, isolir manual beralasan, aktivasi dari pembayaran/pembatalan, halaman `/isolir` tanpa session; Pint, PHPStan, 727 test hijau |
+| 07 | Notifikasi WhatsApp | ✅ | 2026-10-06 | Fonnte (dicocokkan dengan dokumentasi resmi) + driver `log`, `NotifyCustomer` tanpa pesan ganda, kirim lewat queue dengan rate limit 1 pesan/5 detik, pengingat 09:00, pesan isolir khusus tunggakan, halaman tagihan publik bertanda tangan dengan QRIS + polling dan link bayar di `/isolir`; Pint, PHPStan, 795 test hijau |
 | 08 | Laporan & metrik dashboard | ⬜ | | |
 | 09 | Controller & route | ⬜ | | |
 | 10 | Review keamanan | ⬜ | | |
@@ -108,13 +108,20 @@ Catat di sini setiap keputusan yang menyimpang dari `docs/` beserta alasannya.
 | 2026-10-05 | N9 Halaman `/isolir` di `routes/public.php` tanpa grup `web` (tanpa session/cookie/CSRF), Blade dengan CSS inline. Pelanggan tidak dikenali dari IP; cek tagihan dengan kode + 4 digit terakhir nomor WA, pesan gagal seragam, rate limit 120/menit per IP (tampilan), 20/menit per IP + 10/jam per kode (cek). Masukan salah ditampilkan sebagai pesan, bukan Form Request (menyimpang dari aturan 7, seperti P3) | Setiap request HTTP perangkat terisolir diarahkan ke sini; IP di-masquerade dan mudah dipalsukan; kode pelanggan berurutan |
 | 2026-10-05 | N10 `SettingsRepository::businessName()` (default `APP_NAME`) dan `businessWhatsapp()` membaca `business.name`/`business.whatsapp`; tidak masuk `DEFAULTS` sehingga tidak di-seed | Kolom `settings.value` NOT NULL; halaman pengaturan profil usaha di Tahap 09 |
 | 2026-10-05 | N11 `Tests\TestCase` memasang `FakeNetworkController` untuk semua test; helper `fakeNetwork()`, `customerOnProfile()`, `invoiceDueAt()`; fake mendapat `whenCalled()` untuk mensimulasikan kejadian selama panggilan router | Job router yang ikut berjalan di queue `sync` tidak boleh menghubungi router sungguhan |
+| 2026-10-06 | W1 Link bayar = signed URL **tanpa** masa berlaku (`InvoicePaymentLink`), bukan 30 hari seperti prompts/07 (opsi P1-a); invoice `paid` menampilkan "Lunas", `cancelled` menampilkan "Dibatalkan", tanpa tombol bayar. Test "signed URL kedaluwarsa ditolak" diganti "tanpa signature / ID diganti / signature diubah ditolak 403" dan "link tetap berlaku setelah 400 hari" | Mengikuti A4: pelanggan menunggak sering membuka link dari pesan lama |
+| 2026-10-06 | W2 Halaman tagihan publik dikerjakan di Tahap 07 (bukan Tahap 09 seperti utang teknis sebelumnya) di `routes/public.php` tanpa grup `web`: `signed` + `SubstituteBindings`, GET halaman (tidak membuat charge), POST `qris` (JSON; 422 lunas/batal, 503 galat gateway/lock), GET `status` (JSON, hanya DB, polling 5 detik). Rate limit `public-invoice` 120/menit per IP dan `public-invoice-pay` 10/menit per IP + path. Tanpa Form Request (seperti P3/N9). Link bayar ikut ditambahkan di hasil cek `/isolir` (opsi P2). Layout Blade bersama `public/layout` | Prompts/07 butir 7 memintanya dan `{link_bayar}` butuh route; pratinjau link WhatsApp membuka halaman sehingga charge hanya dibuat saat tombol ditekan |
+| 2026-10-06 | W3 Tiga job pemicu yang sudah ada (`SendInvoiceNotificationJob`, `SendPaymentConfirmationJob`, `SendIsolationNotificationJob`) hanya memanggil `NotifyCustomer`; `NotifyCustomer` mengunci pelanggan (M11), cek ganda dengan locking read (P10) terhadap `message_logs` `queued`/`sent` per invoice + template, menyimpan body yang sudah dirender, lalu dispatch `SendWhatsAppMessage` `afterCommit`. Log `failed` tidak menghalangi | Action Tahap 04–06 tidak berubah; template rusak tidak me-rollback penerbitan invoice |
+| 2026-10-06 | W4 Pesan `isolated` hanya untuk isolir `overdue` (opsi P3), merujuk tunggakan lewat toleransi dengan `due_at` paling lama; dilewati jika pelanggan sudah aktif/lunas. Pesan `invoice_issued` dilewati jika invoice sudah lunas/dibatalkan saat job berjalan | Template default menyebut tagihan belum dibayar; isolir manual bisa karena pelanggaran |
+| 2026-10-06 | W5 `SendWhatsAppMessage`: `RateLimited('whatsapp')` global 1 pesan / `WHATSAPP_SECONDS_PER_MESSAGE` detik (default 5, `Limit::perSecond(1, 5)`), `retryUntil()` 6 jam + `$maxExceptions = 3` + backoff [60, 300] **menggantikan `$tries`** (menyimpang dari docs/06). Penolakan provider → `failed` tanpa retry; `MessageSendException` → retry; activity log `message.sent`/`message.failed` (aturan 10). `phpunit.xml` mematikan limiter | Setiap penahanan rate limit dihitung sebagai percobaan, sehingga `$tries` akan habis di hari tagih yang ramai; queue `sync` membuang job yang ditahan |
+| 2026-10-06 | W6 Fonnte dicocokkan dengan dokumentasi resmi (lihat docs/05): token tanpa `Bearer`, body form, sukses `status: true` + `id[]`, gagal `status`/`Status: false` + `reason`; HTTP client tanpa retry otomatis (timeout setelah diterima = pesan ganda). Driver tambahan `log` untuk development (opsi P4) | Galat Fonnte datang di body; retry otomatis berisiko pesan ganda |
+| 2026-10-06 | W7 `SendInvoiceReminders` (`billing:send-reminders` 09:00, `--date` mengikuti B9): invoice `unpaid`/`overdue` dengan `due_at` = hari ini + N (`reminder_before_due`) dan = hari ini (`reminder_due`); N = 0 hanya `reminder_due`; termasuk pelanggan `terminated`; tanpa catch-up; satu invoice gagal tidak menghentikan yang lain dan command keluar gagal | Invoice pelanggan berhenti masih ditagih (docs/04); pengingat bersifat tepat waktu |
+| 2026-10-06 | W8 Template default pindah ke `MessageTemplateKey::defaultBody()` (dipakai seeder); `MessageTemplateRenderer` membiarkan placeholder tak dikenal, template nonaktif/tidak ada → tidak dikirim (+ `Log::warning` bila tidak ada). `TestCase` memasang `FakeMessageSender`; helper `fakeMessages()`, dan `fakeGateway()` dipindah ke `tests/Pest.php`. Test stub `NotImplementedException` di `ContainerBindingTest` diganti test driver `log` | Satu sumber template default; stub terakhir sudah diimplementasikan |
 
 ## Utang teknis
 
 Hal yang sengaja ditunda untuk dikerjakan nanti.
 
-- Tahap 07: `SendIsolationNotificationJob::handle()` masih kosong (sudah di-dispatch `afterCommit` dari `IsolateCustomer` hanya saat isolir baru).
-- Tahap 09: controller isolir/buka isolir manual (`ManualIsolationRequest` → `IsolateCustomerManually` / `ActivateCustomerManually`, tampilkan peringatan jika masih menunggak), filter dashboard `Customer::hasNetworkError()`, halaman pengaturan `business.name`/`business.whatsapp`, dan link bayar di halaman `/isolir`.
+- Tahap 09: controller isolir/buka isolir manual (`ManualIsolationRequest` → `IsolateCustomerManually` / `ActivateCustomerManually`, tampilkan peringatan jika masih menunggak), filter dashboard `Customer::hasNetworkError()`, dan halaman pengaturan `business.name`/`business.whatsapp`.
 - `IsolateOverdueCustomers` menghitung pelanggan yang di-dispatch, termasuk yang dilewati karena job unik masih antre; angka di output command bisa sedikit lebih besar dari job yang benar-benar masuk queue.
 - Uji manual ke Mikrotik CHR (tes koneksi, isolir, aktivasi, nonaktif secret) belum dilakukan; implementasi baru diuji dengan client palsu.
 - Pelanggan yang di-soft-delete tetap memegang `pppoe_username` di router-nya (unique index mencakup baris terhapus), sehingga data yang salah input tidak bisa didaftarkan ulang dengan username yang sama. Opsi: ubah username saat dihapus, atau hard delete untuk pelanggan tanpa invoice. Putuskan sebelum Tahap 09.
@@ -123,8 +130,12 @@ Hal yang sengaja ditunda untuk dikerjakan nanti.
 - Aturan validasi bersama memakai dua pola: method statis di `StorePackageRequest`/`StoreRouterRequest` dan trait `app/Concerns/CustomerValidationRules`. Satukan ke pola trait saat menyentuh Form Request lagi (review T03 #11).
 - Hapus user oleh admin (Tahap 09) akan gagal untuk user yang punya pembayaran/log karena FK `restrict` (D5). Action `DeleteUser` perlu menolak dengan pesan jelas (atau menonaktifkan user) dan menolak admin menghapus dirinya sendiri.
 - Test `TerminateCustomer` (Tahap 03) memakai `Queue::fake()` yang mengabaikan `afterCommit()`, sehingga belum membuktikan job tidak terkirim saat rollback; pola test dengan queue `sync` + `Queue::before()` ada di `ActivateNewCustomerTest`.
-- Tahap 07: `SendInvoiceNotificationJob::handle()` masih kosong (sudah di-dispatch `afterCommit` dari generator dan aktivasi).
-- Tahap 07: `SendPaymentConfirmationJob::handle()` masih kosong (sudah di-dispatch `afterCommit` untuk pembayaran normal).
-- Tahap 09: halaman tagihan publik (signed URL) yang memanggil `CreateQrisCharge` dan menangani `ValidationException`/`PaymentGatewayException`/`LockTimeoutException`; controller `RecordManualPaymentRequest` → `RecordManualPayment`; aksi admin menandai pembayaran anomali `resolved` (`payments.review`) belum ada Action-nya.
+- Tahap 09: controller `RecordManualPaymentRequest` → `RecordManualPayment`; aksi admin menandai pembayaran anomali `resolved` (`payments.review`) belum ada Action-nya.
 - `ActivateCustomerRequest` memakai `before_or_equal:today` tanpa pesan khusus, sehingga pengguna melihat "…sebelum atau sama dengan today." (ditemukan di Tahap 05; `RecordManualPaymentRequest` sudah memakai pesan khusus).
 - `npm run check` (vp) melaporkan format markdown di `docs/`, `prompts/`, `PROGRESS.md`, `MULAI-DI-SINI.md`, `pint.json` sejak sebelum Tahap 02; belum dirapikan.
+- Tahap 09: kirim ulang tagihan oleh kasir (`invoices.resend`) harus melewati cek pesan ganda `NotifyCustomer` (misalnya parameter `force`), dan halaman pengaturan template WhatsApp (`settings.manage`).
+- Status pengiriman akhir Fonnte (terkirim/gagal di sisi WhatsApp) hanya tersedia lewat webhook Fonnte; v1 menganggap `status: true` (masuk antrean Fonnte) sebagai `sent`.
+- Pesan ganda masih mungkin jika request ke Fonnte timeout setelah pesan diterima lalu job mencoba ulang (risiko diterima, lihat W6).
+- Uji manual ke Fonnte sungguhan dan tampilan halaman tagihan di HP (QR Midtrans sandbox, polling) belum dilakukan; implementasi baru diuji dengan fake.
+- `NotImplementedException` tidak dipakai lagi setelah stub terakhir diimplementasikan; bisa dihapus.
+- `.env` lokal belum berisi `WHATSAPP_DRIVER`; default `fonnte` tanpa token membuat setiap pesan tercatat `failed`. Untuk development set `WHATSAPP_DRIVER=log`.

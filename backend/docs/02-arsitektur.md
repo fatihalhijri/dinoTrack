@@ -25,8 +25,9 @@ app/
 │   │                        IssueInvoice, MarkOverdueInvoices, CancelInvoice, ReissueInvoice
 │   ├── Payments/            CreateQrisCharge, MarkInvoicePaid, RecordManualPayment,
 │   │                        ProcessGatewayNotification, ReconcilePendingCharges
-│   └── Network/             IsolateCustomer, ActivateCustomer, ApplyCustomerProfile,
-│                            IsolateOverdueCustomers, IsolateCustomerManually, ActivateCustomerManually
+│   ├── Network/             IsolateCustomer, ActivateCustomer, ApplyCustomerProfile,
+│   │                        IsolateOverdueCustomers, IsolateCustomerManually, ActivateCustomerManually
+│   └── Notifications/       NotifyCustomer, SendInvoiceReminders
 ├── Contracts/               Interface integrasi
 │   ├── PaymentGateway.php
 │   ├── NetworkController.php
@@ -34,7 +35,7 @@ app/
 ├── Services/                Implementasi integrasi
 │   ├── Payment/MidtransPaymentGateway.php
 │   ├── Network/MikrotikNetworkController.php   (+ RouterOsClientFactory)
-│   └── Messaging/FonnteMessageSender.php
+│   └── Messaging/FonnteMessageSender.php       (+ LogMessageSender untuk development)
 ├── Enums/                   CustomerStatus, InvoiceStatus, PaymentMethod, ...
 ├── Jobs/                    Pembungkus queue untuk Actions yang lambat
 ├── Console/Commands/        Perintah terjadwal
@@ -46,7 +47,8 @@ app/
 ├── Policies/
 ├── Support/                 Helper (Money, BillingPeriod, ProrataCalculator, InvoiceNumberGenerator,
 │                            SequenceGenerator, SettingsRepository, ActivityLogger, PhoneNumber,
-│                            IsolationRules, CustomerNetworkLock)
+│                            IsolationRules, CustomerNetworkLock, MessageTemplateRenderer,
+│                            InvoicePaymentLink)
 └── Data/                    DTO sederhana (readonly class) bila perlu
 tests/
 ├── Feature/                 Alur end-to-end (HTTP, job, scheduler)
@@ -128,6 +130,28 @@ baru, ganti paket yang berlaku, koreksi paket saat terbit ulang. Pemicu
 `ActivateCustomerJob`: pembayaran, pembatalan invoice, isolir yang balapan
 dengan pembayaran, dan admin (`ActivateCustomerManually`).
 
+### Notifikasi WhatsApp
+```
+Pemicu (afterCommit): SendInvoiceNotificationJob (IssueInvoice), SendPaymentConfirmationJob
+(MarkInvoicePaid), SendIsolationNotificationJob (IsolateCustomer, isolir overdue saja)
+Scheduler (harian 09:00) → billing:send-reminders → SendInvoiceReminders (H-N dan hari jatuh tempo)
+  → NotifyCustomer (transaksi, lock pelanggan)
+      → sudah ada message_logs queued/sent untuk invoice + template → dilewati
+      → MessageTemplateRenderer (template nonaktif → dilewati), link bayar = InvoicePaymentLink
+      → message_logs status queued → dispatch SendWhatsAppMessage (afterCommit)
+          → RateLimited('whatsapp'): 1 pesan / 5 detik untuk seluruh aplikasi
+          → MessageSender::send() → sent (provider_message_id, sent_at, log message.sent)
+            ditolak provider → failed tanpa retry; MessageSendException → retry, failed() → failed
+```
+
+### Halaman tagihan publik
+```
+routes/public.php (tanpa session/cookie/CSRF), middleware signed + SubstituteBindings
+GET  /tagihan/{invoice}         → Blade rincian + tombol bayar (tidak membuat charge)
+POST /tagihan/{invoice}/qris    → CreateQrisCharge → JSON qr_url / 422 lunas-batal / 503 gateway
+GET  /tagihan/{invoice}/status  → JSON status invoice + charge terakhir (polling 5 detik)
+```
+
 ## Binding interface
 
 Di `AppServiceProvider` (atau provider khusus):
@@ -135,13 +159,17 @@ Di `AppServiceProvider` (atau provider khusus):
 ```php
 $this->app->bind(PaymentGateway::class, MidtransPaymentGateway::class);
 $this->app->bind(NetworkController::class, MikrotikNetworkController::class);
-$this->app->bind(MessageSender::class, FonnteMessageSender::class);
+// MessageSender dipilih dari config('services.whatsapp.driver'): `fonnte` atau `log`.
+$this->app->bind(MessageSender::class, fn () => match (config('services.whatsapp.driver')) { ... });
 ```
 
-Di test: `$this->app->instance(PaymentGateway::class, new FakePaymentGateway);`.
-`Tests\TestCase` memasang `FakeNetworkController` untuk setiap test agar job
-router yang ikut berjalan di queue `sync` tidak pernah menghubungi router
-sungguhan; test yang memeriksa panggilan memakai helper `fakeNetwork()`.
+Di test: `$this->app->instance(PaymentGateway::class, new FakePaymentGateway);`
+(helper `fakeGateway()`). `Tests\TestCase` memasang `FakeNetworkController` dan
+`FakeMessageSender` untuk setiap test agar job router dan notifikasi yang ikut
+berjalan di queue `sync` tidak pernah menghubungi layanan sungguhan; test yang
+memeriksa panggilan memakai helper `fakeNetwork()` / `fakeMessages()`. Test
+mematikan rate limit WhatsApp (`WHATSAPP_SECONDS_PER_MESSAGE=0` di
+`phpunit.xml`) karena queue `sync` membuang job yang ditahan.
 
 ## Jadwal (routes/console.php)
 

@@ -6,6 +6,7 @@ use App\Enums\InvoiceStatus;
 use App\Models\Customer;
 use App\Models\Setting;
 use App\Providers\AppServiceProvider;
+use App\Support\InvoicePaymentLink;
 
 function isolatedPageCustomer(): Customer
 {
@@ -85,4 +86,14 @@ it('menampilkan kontak WhatsApp admin jika sudah diisi', function () {
     $this->get('/isolir?kode=PLG-000123&hp=7890')
         ->assertSee('https://wa.me/6281200001111', false)
         ->assertSee('+6281200001111');
+});
+
+it('menampilkan link bayar bertanda tangan untuk setiap tagihan yang belum dibayar', function () {
+    $this->travelTo('2026-10-20 10:00');
+    $customer = isolatedPageCustomer();
+    $overdue = invoiceDueAt($customer, '2026-10-01');
+
+    $this->get('/isolir?kode=PLG-000123&hp=7890')
+        ->assertOk()
+        ->assertSee(e(InvoicePaymentLink::for($overdue)), false);
 });

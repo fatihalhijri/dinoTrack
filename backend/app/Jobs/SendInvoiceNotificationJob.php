@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Actions\Notifications\NotifyCustomer;
+use App\Enums\InvoiceStatus;
+use App\Enums\MessageTemplateKey;
 use App\Models\Invoice;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -11,9 +14,8 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Mengirim pesan WhatsApp `invoice_issued` untuk invoice yang baru terbit.
- * Pengiriman diisi di Tahap 07 (MessageSender + message_logs); untuk saat ini job sudah
- * di-dispatch agar alur Tahap 04 tidak perlu diubah lagi.
+ * Menjadwalkan pesan WhatsApp `invoice_issued` untuk invoice yang baru terbit (dari IssueInvoice).
+ * Invoice yang sudah lunas atau dibatalkan sebelum job berjalan tidak diberi tahu.
  */
 final class SendInvoiceNotificationJob implements ShouldQueue
 {
@@ -30,9 +32,13 @@ final class SendInvoiceNotificationJob implements ShouldQueue
         public Invoice $invoice,
     ) {}
 
-    public function handle(): void
+    public function handle(NotifyCustomer $notify): void
     {
-        // Diisi di Tahap 07.
+        if (! in_array($this->invoice->status, InvoiceStatus::outstanding(), true)) {
+            return;
+        }
+
+        $notify->handle($this->invoice->customer, MessageTemplateKey::InvoiceIssued, $this->invoice);
     }
 
     public function failed(?Throwable $exception): void

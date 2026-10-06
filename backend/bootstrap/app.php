@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Support\SettingsRepository;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Exceptions\InvalidSignatureException;
 use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -41,4 +43,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // Link tagihan publik yang rusak/diubah: halaman ramah pelanggan, bukan 403 polos.
+        $exceptions->render(fn (InvalidSignatureException $exception, Request $request) => $request->routeIs('public-invoices.show')
+            ? response()->view('public.link-invalid', ['businessName' => app(SettingsRepository::class)->businessName()], 403)
+            : null);
     })->create();

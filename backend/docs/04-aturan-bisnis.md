@@ -124,7 +124,18 @@ unpaid / overdue ──(dibatalkan admin)──> cancelled
 ## Link tagihan dan charge QRIS
 
 - Link tagihan (signed URL) tidak kedaluwarsa selama invoice belum `paid`
-  atau `cancelled`.
+  atau `cancelled`. Signed URL dibuat tanpa masa berlaku; link invoice
+  `paid` menampilkan "Lunas" (bukti bayar) dan link invoice `cancelled`
+  menampilkan "Dibatalkan", keduanya tanpa tombol bayar (keputusan 2026-10-06).
+  Link yang tidak bertanda tangan atau diubah ditolak (403). Mengganti
+  `APP_KEY` membatalkan semua link yang sudah terkirim.
+- Halaman tagihan (`GET /tagihan/{id}`, Blade, tanpa session) menampilkan
+  rincian invoice, nama dan kode pelanggan (tanpa nomor HP/alamat), dan tombol
+  bayar. Charge QRIS **tidak** dibuat saat halaman dibuka (pratinjau link
+  WhatsApp ikut membukanya), tetapi saat tombol ditekan. Status diperbarui
+  dengan polling ringan tiap 5 detik selama QR tampil (hanya membaca database).
+  Dibatasi 120 tampilan/menit per IP dan 10 permintaan QRIS/menit per IP per
+  invoice.
 - Charge QRIS baru dibuat hanya jika charge sebelumnya sudah `expired` atau
   `failed`. Membuka halaman berulang kali memakai ulang charge `pending`
   yang masih berlaku (sisa waktu lebih dari 1 menit).
@@ -224,7 +235,8 @@ terminated ──(berlangganan lagi)──> pending
 - Cek tagihan memakai kode pelanggan + 4 digit terakhir nomor WhatsApp. Semua
   kegagalan memakai pesan yang sama. Dibatasi 20 cek/menit per IP dan 10
   cek/jam per kode pelanggan; tampilan biasa 120/menit per IP.
-- Link bayar QRIS ditambahkan bersama halaman tagihan publik (Tahap 09).
+- Hasil cek tagihan menampilkan tombol "Bayar" per tagihan yang mengarah ke
+  halaman tagihan publik.
 
 ## Ganti paket
 
@@ -280,4 +292,27 @@ terminated ──(berlangganan lagi)──> pending
 | Pembayaran diterima | `payment_received` | setelah pembayaran tercatat |
 
 Pesan tidak dikirim ganda untuk kejadian yang sama pada invoice yang sama
-(cek `message_logs`).
+(cek `message_logs`): pesan baru tidak dibuat selama yang lama masih `queued`
+atau sudah `sent`. Pesan yang `failed` tidak menghalangi kejadian berikutnya.
+
+- **Tagihan terbit**: dilewati jika invoice sudah lunas/dibatalkan sebelum
+  pesan dijadwalkan.
+- **Pengingat**: untuk invoice `unpaid`/`overdue` dengan `due_at` tepat
+  H-`reminder_days_before` atau hari ini, termasuk invoice pelanggan
+  `terminated` yang masih ditagih. Jika `reminder_days_before = 0`, hanya
+  pengingat hari jatuh tempo yang dikirim. Pengingat yang terlewat karena
+  server mati tidak dikirim belakangan.
+- **Diisolir**: hanya untuk isolir otomatis (`isolation_reason = overdue`),
+  karena isolir manual bisa bukan karena tagihan. Invoice yang disebut adalah
+  tunggakan lewat toleransi dengan `due_at` paling lama. Dilewati jika
+  pelanggan sudah aktif kembali atau tunggakannya sudah lunas. Isolir ulang
+  untuk tunggakan yang sama tidak mengirim pesan lagi.
+- **Pembayaran diterima**: hanya untuk pembayaran normal (bukan anomali).
+- Template yang dinonaktifkan admin tidak dikirim (tidak tercatat di
+  `message_logs`).
+- Paling banyak satu pesan per 5 detik (`WHATSAPP_SECONDS_PER_MESSAGE`) untuk
+  seluruh aplikasi agar nomor pengirim tidak diblokir.
+- Penolakan provider (nomor tidak valid, token salah, kuota habis, perangkat
+  terputus) langsung dicatat `failed` tanpa dicoba ulang; galat jaringan atau
+  server provider dicoba ulang hingga 3 kali. Kirim ulang manual oleh kasir
+  (`invoices.resend`) dikerjakan bersama controller (Tahap 09).
