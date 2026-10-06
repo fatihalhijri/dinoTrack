@@ -44,6 +44,10 @@ subscription aktif (`Customer::activeSubscription()`).
 ### users
 Bawaan Laravel + role lewat spatie/laravel-permission (`admin`, `kasir`, `teknisi`).
 
+| Kolom tambahan | Tipe | Catatan |
+|---|---|---|
+| deactivated_at | timestamp nullable | pegawai yang keluar; tidak bisa masuk dan session berjalan diputus (migration `2026_10_06_213304`) |
+
 ### packages
 | Kolom | Tipe | Catatan |
 |---|---|---|
@@ -77,16 +81,21 @@ Bawaan Laravel + role lewat spatie/laravel-permission (`admin`, `kasir`, `teknis
 | odp | string nullable | |
 | latitude, longitude | decimal(10,7) nullable | |
 | router_id | foreignId | |
-| pppoe_username | string | unique per router |
+| pppoe_username | string | unique per router di antara pelanggan yang tidak dihapus |
+| active_pppoe_username | string nullable, **generated** | `IF(deleted_at IS NULL, pppoe_username, NULL)`; jangan diisi aplikasi (migration `2026_10_06_213303`) |
 | status | string | `pending`, `active`, `isolated`, `terminated` (`CustomerStatus`) |
 | installed_at | date nullable | |
 | isolated_at | timestamp nullable | |
 | isolation_reason | string nullable | `overdue` (otomatis) atau `manual` (`IsolationReason`); null jika tidak diisolir. Hanya isolir `overdue` yang dibuka otomatis saat lunas |
 | terminated_at | timestamp nullable | |
+| network_error_at | timestamp nullable | tanda untuk admin: perintah router gagal setelah semua percobaan job habis; dikosongkan saat perintah router berikutnya berhasil; index (migration `2026_10_05_183946`) |
+| network_error | string nullable | ringkasan galat terakhir |
 | notes | text nullable | |
 | softDeletes | | hanya untuk salah input; pelanggan yang sudah punya invoice tidak boleh dihapus (gunakan `terminated`) |
 
-Index: `status`, unique (`router_id`, `pppoe_username`).
+Index: `status`, unique (`router_id`, `active_pppoe_username`), index (`router_id`,
+`pppoe_username`). Username pelanggan yang di-soft-delete karena salah input boleh
+dipakai lagi (sebelumnya unique (`router_id`, `pppoe_username`) mencakup baris terhapus).
 
 ### subscriptions
 | Kolom | Tipe | Catatan |
@@ -112,6 +121,7 @@ baru; subscription lama tetap sebagai riwayat.
 | customer_id | foreignId | sama dengan `subscription.customer_id` (denormalisasi untuk query) |
 | subscription_id | foreignId | |
 | period_start, period_end | date | |
+| billed_period_start | date nullable, **generated** | `IF(status <> 'cancelled', period_start, NULL)`; jangan diisi aplikasi (migration `2026_10_05_173334`) |
 | issued_at | date | |
 | due_at | date | |
 | subtotal | unsignedBigInteger | |
@@ -123,7 +133,10 @@ baru; subscription lama tetap sebagai riwayat.
 | cancelled_at | timestamp nullable | |
 | cancelled_reason | string nullable | |
 
-Unique: (`subscription_id`, `period_start`) — mencegah tagihan ganda.
+Unique: (`subscription_id`, `billed_period_start`) — mencegah tagihan ganda
+untuk invoice yang tidak dibatalkan, tetapi mengizinkan periode yang
+invoice-nya `cancelled` diterbitkan ulang (sebelumnya unique
+(`subscription_id`, `period_start`), kini index biasa).
 Index: (`status`, `due_at`) — untuk query overdue/isolir/pengingat dan juga
 query berdasarkan `status` saja.
 
@@ -186,6 +199,11 @@ Log mentah setiap webhook yang masuk (untuk audit dan idempotensi).
 
 Index: (`order_id`, `transaction_status`).
 
+Retensi (`MassPrunable`, `model:prune` harian, keputusan 2026-10-06): signature salah
+dihapus setelah 30 hari; valid dan sudah diproses setelah 365 hari; valid tetapi belum
+diproses (job gagal) tidak pernah dihapus otomatis. Payload signature salah hanya berisi
+field audit (lihat docs/05). `activity_logs` dan `message_logs` tidak dihapus.
+
 ### message_templates
 | Kolom | Tipe | Catatan |
 |---|---|---|
@@ -218,6 +236,12 @@ mengirim ulang tagihan.
 | action | string (`customer.isolated`, `payment.received`, ...) |
 | properties | json nullable |
 
+Index: (`action`, `created_at`) — laporan pergerakan pelanggan (migration
+`2026_10_06_211200`). Laporan membaca `customer.activated`
+(`properties.installed_at`), `customer.terminated`, dan `customer.isolated`
+(`properties.previous_isolation_reason`), sehingga nama aksi dan properti itu
+adalah kontrak: jangan diganti tanpa menyesuaikan `ReportService`.
+
 ### settings
 | Kolom | Tipe |
 |---|---|
@@ -226,7 +250,9 @@ mengirim ulang tagihan.
 
 Diisi `SettingSeeder` dengan default `billing.*` dari `docs/04-aturan-bisnis.md`
 (nilai yang sudah diubah admin tidak ditimpa). `billing.penalty_amount` tidak
-di-seed karena denda tidak dipakai di v1.
+di-seed karena denda tidak dipakai di v1. Profil usaha (`business.name`,
+`business.address`, `business.whatsapp`) diisi admin dan tidak di-seed; nilai
+yang dikosongkan menghapus barisnya (kolom `value` NOT NULL).
 
 ### sequences
 Penghitung berurutan yang dibaca dengan `lockForUpdate` agar aman dari race

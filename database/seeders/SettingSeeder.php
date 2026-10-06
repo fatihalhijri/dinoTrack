@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Models\Setting;
+use App\Support\SettingsRepository;
 use Illuminate\Database\Seeder;
 
 /**
@@ -12,15 +13,8 @@ use Illuminate\Database\Seeder;
  */
 class SettingSeeder extends Seeder
 {
-    /** @var array<string, int|bool> */
-    public const array DEFAULTS = [
-        'billing.due_days' => 7,
-        'billing.grace_days' => 3,
-        'billing.reminder_days_before' => 3,
-        'billing.prorate_first_month' => true,
-        'billing.auto_isolate' => true,
-        'billing.auto_activate' => true,
-    ];
+    /** Sumber tunggalnya di SettingsRepository agar default saat membaca dan saat seeding sama. */
+    public const array DEFAULTS = SettingsRepository::DEFAULTS;
 
     public function run(): void
     {

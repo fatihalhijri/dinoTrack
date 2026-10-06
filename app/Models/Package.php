@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\SearchTerm;
 use Carbon\CarbonImmutable;
 use Database\Factories\PackageFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -45,6 +46,24 @@ class Package extends Model
     protected function active(Builder $query): void
     {
         $query->where('is_active', true);
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     * @param  array{search?: string|null, is_active?: bool|null}  $filters
+     */
+    #[Scope]
+    protected function applyFilters(Builder $query, array $filters): void
+    {
+        $search = $filters['search'] ?? null;
+        $isActive = $filters['is_active'] ?? null;
+
+        $query
+            ->when($search !== null, fn (Builder $query) => $query->where(function (Builder $query) use ($search): void {
+                $pattern = SearchTerm::contains((string) $search);
+                $query->where('name', 'like', $pattern)->orWhere('mikrotik_profile', 'like', $pattern);
+            }))
+            ->when($isActive !== null, fn (Builder $query) => $query->where('is_active', $isActive));
     }
 
     /**

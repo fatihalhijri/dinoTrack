@@ -14,5 +14,6 @@ test('memberi akses tagihan sesuai role', function (string $ability, Model|strin
     'viewAny' => [Role::Admin, Role::Kasir],
     'view' => [Role::Admin, Role::Kasir],
     'cancel' => [Role::Admin],
+    'reissue' => [Role::Admin],
     'resend' => [Role::Admin, Role::Kasir],
 ]));

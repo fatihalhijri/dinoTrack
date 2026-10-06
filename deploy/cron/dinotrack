@@ -1,0 +1,11 @@
+# Cron DinoTrack (docs/10-deploy.md). Salin ke /etc/cron.d/dinotrack (nama file tanpa titik,
+# pemilik root, chmod 644, diakhiri baris kosong).
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Scheduler Laravel: semua jadwal ada di routes/console.php (zona waktu Asia/Jakarta).
+* * * * * dinotrack cd /var/www/dinotrack/backend && php artisan schedule:run >> /dev/null 2>&1
+
+# Backup database harian, setelah pembersihan data lama 02:00-02:10.
+30 3 * * * dinotrack /bin/bash /var/www/dinotrack/backend/deploy/backup-database.sh >> /var/www/dinotrack/backend/storage/logs/backup.log 2>&1
+

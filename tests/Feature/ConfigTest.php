@@ -16,3 +16,15 @@ it('memakai Midtrans sandbox bila bukan production', function () {
 it('memilih Fonnte sebagai driver WhatsApp bawaan', function () {
     expect(config('services.whatsapp.driver'))->toBe('fonnte');
 });
+
+it('memberi retry_after queue lebih lama dari timeout setiap job agar job tidak berjalan dobel', function (string $connection) {
+    $retryAfter = config("queue.connections.{$connection}.retry_after");
+
+    foreach (glob(app_path('Jobs/*.php')) ?: [] as $file) {
+        $class = 'App\\Jobs\\'.basename($file, '.php');
+        $timeout = (new ReflectionClass($class))->getDefaultProperties()['timeout'] ?? null;
+
+        expect($timeout)->toBeInt("{$class} wajib menetapkan \$timeout")
+            ->toBeLessThan($retryAfter, "{$class}::\$timeout harus lebih pendek dari retry_after {$connection}");
+    }
+})->with(['database', 'redis']);

@@ -70,14 +70,15 @@ it('FakeMessageSender menyimpan nomor dan isi pesan', function () {
     ]);
 });
 
-it('FakePaymentGateway membuat charge QRIS berurutan dengan order_id unik', function () {
+it('FakePaymentGateway membuat charge QRIS dengan order_id dari pemanggil dan QR berbeda tiap percobaan', function () {
     $gateway = new FakePaymentGateway;
     $invoice = (new Invoice)->forceFill(['id' => 7, 'total' => 150000]);
 
-    $first = $gateway->createQrisCharge($invoice);
-    $second = $gateway->createQrisCharge($invoice);
+    $first = $gateway->createQrisCharge($invoice, 'INV20261000007-1');
+    $second = $gateway->createQrisCharge($invoice, 'INV20261000007-2');
 
-    expect($first->orderId)->not->toBe($second->orderId)
+    expect($first->orderId)->toBe('INV20261000007-1')
+        ->and($first->qrUrl)->not->toBe($second->qrUrl)
         ->and($first->amount)->toBe(150000)
         ->and($first->status)->toBe(PaymentChargeStatus::Pending);
 });
