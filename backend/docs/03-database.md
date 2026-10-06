@@ -224,6 +224,12 @@ mengirim ulang tagihan.
 | action | string (`customer.isolated`, `payment.received`, ...) |
 | properties | json nullable |
 
+Index: (`action`, `created_at`) — laporan pergerakan pelanggan (migration
+`2026_10_06_211200`). Laporan membaca `customer.activated`
+(`properties.installed_at`), `customer.terminated`, dan `customer.isolated`
+(`properties.previous_isolation_reason`), sehingga nama aksi dan properti itu
+adalah kontrak: jangan diganti tanpa menyesuaikan `ReportService`.
+
 ### settings
 | Kolom | Tipe |
 |---|---|

@@ -281,6 +281,41 @@ terminated ──(berlangganan lagi)──> pending
 - Router yang masih punya pelanggan (termasuk yang di-soft-delete) tidak bisa
   dihapus; nonaktifkan sebagai gantinya.
 
+## Laporan
+
+Disetujui 2026-10-06. Semua tanggal mengikuti zona waktu aplikasi (`Asia/Jakarta`).
+
+- **Pendapatan** = pembayaran normal (`review_status = none`) menurut bulan
+  `paid_at` (basis kas), dipisah per metode. Pembayaran yang dicatat mundur
+  masuk ke bulan uangnya diterima. Pembayaran anomali (`needs_review` dan
+  `resolved`) bukan pendapatan karena dikembalikan manual; dashboard
+  menampilkan jumlah dan nominal yang masih `needs_review`.
+- **Tunggakan** = invoice `unpaid`/`overdue` dengan `due_at < hari ini`
+  (termasuk yang belum sempat ditandai overdue dan invoice pelanggan
+  `terminated`). Umur = hari sejak jatuh tempo, dikelompokkan 0–7, 8–30, dan
+  lebih dari 30 hari. Invoice yang jatuh tempo hari ini belum tunggakan.
+- **Jatuh tempo minggu ini** = invoice `unpaid`/`overdue` dengan `due_at` hari
+  ini s.d. H+6 (bukan minggu kalender).
+- **Pergerakan pelanggan** dalam rentang tanggal (inklusif), dihitung sebagai
+  jumlah pelanggan berbeda dari `activity_logs` karena kolom di `customers`
+  ditimpa saat status berubah lagi:
+  - *baru*: aktivasi dengan tanggal pasang di dalam rentang (termasuk tanggal
+    pasang mundur dan pemasangan ulang setelah berhenti);
+  - *berhenti*: diberhentikan di dalam rentang;
+  - *terisolir*: diisolir dari status `active` di dalam rentang. Isolir manual
+    atas isolir otomatis hanya mengganti alasan dan tidak dihitung.
+  Data yang dibuat tanpa Action (misalnya `DemoSeeder`) tidak punya log
+  sehingga tidak muncul di laporan ini.
+- **Ringkasan dashboard** (pendapatan bulan ini, tunggakan, jumlah pelanggan
+  per status, jatuh tempo minggu ini, pembayaran perlu tinjauan, pelanggan
+  dengan galat router) di-cache 5 menit dan dihitung ulang setelah ada
+  perubahan pembayaran atau invoice. Perubahan status pelanggan menunggu cache
+  habis.
+- **Ekspor CSV**: rincian pembayaran per rentang tanggal bayar (termasuk
+  anomali, dibedakan kolom status tinjauan), daftar tunggakan, dan rekap
+  pendapatan 12 bulan. Format UTF-8 dengan BOM dan pemisah `;` (Excel
+  berlocale Indonesia); nominal berupa angka rupiah tanpa "Rp".
+
 ## Pesan WhatsApp
 
 | Kejadian | Template | Waktu |

@@ -2,7 +2,7 @@
 
 Status: ⬜ belum · 🟨 sedang dikerjakan · ✅ selesai
 
-Tahap berikutnya: **Tahap 08** (Laporan & metrik dashboard).
+Tahap berikutnya: **Tahap 09** (Controller & route).
 
 | Tahap | Nama | Status | Tanggal | Catatan |
 |---|---|---|---|---|
@@ -14,7 +14,7 @@ Tahap berikutnya: **Tahap 08** (Laporan & metrik dashboard).
 | 05 | Pembayaran manual & QRIS | ✅ | 2026-10-05 | Pembayaran manual, QRIS Midtrans (HTTP client), webhook idempotent lewat queue, rekonsiliasi per jam, dan pemicu aktivasi; balapan notifikasi teruji di 4 proses paralel; Pint, PHPStan, 621 test hijau |
 | 06 | Mikrotik: isolir & aktivasi | ✅ | 2026-10-06 | RouterOS API dengan timeout pendek dan deteksi `!trap`, isolir/aktivasi router-dulu dengan cek ulang dan lock per pelanggan, job 4 percobaan + tanda `network_error_at`, isolir otomatis 01:15, isolir manual beralasan, aktivasi dari pembayaran/pembatalan, halaman `/isolir` tanpa session; Pint, PHPStan, 727 test hijau |
 | 07 | Notifikasi WhatsApp | ✅ | 2026-10-06 | Fonnte (dicocokkan dengan dokumentasi resmi) + driver `log`, `NotifyCustomer` tanpa pesan ganda, kirim lewat queue dengan rate limit 1 pesan/5 detik, pengingat 09:00, pesan isolir khusus tunggakan, halaman tagihan publik bertanda tangan dengan QRIS + polling dan link bayar di `/isolir`; Pint, PHPStan, 795 test hijau |
-| 08 | Laporan & metrik dashboard | ⬜ | | |
+| 08 | Laporan & metrik dashboard | ✅ | 2026-10-06 | `ReportService` (pendapatan basis kas per metode, umur tunggakan, pergerakan pelanggan dari `activity_logs` dengan index baru, ringkasan dashboard di-cache 5 menit dan dihapus setelah commit) + ekspor CSV di-stream untuk Excel Indonesia; Pint, PHPStan, 833 test hijau |
 | 09 | Controller & route | ⬜ | | |
 | 10 | Review keamanan | ⬜ | | |
 | 11 | Kesiapan deploy | ⬜ | | |
@@ -116,6 +116,13 @@ Catat di sini setiap keputusan yang menyimpang dari `docs/` beserta alasannya.
 | 2026-10-06 | W6 Fonnte dicocokkan dengan dokumentasi resmi (lihat docs/05): token tanpa `Bearer`, body form, sukses `status: true` + `id[]`, gagal `status`/`Status: false` + `reason`; HTTP client tanpa retry otomatis (timeout setelah diterima = pesan ganda). Driver tambahan `log` untuk development (opsi P4) | Galat Fonnte datang di body; retry otomatis berisiko pesan ganda |
 | 2026-10-06 | W7 `SendInvoiceReminders` (`billing:send-reminders` 09:00, `--date` mengikuti B9): invoice `unpaid`/`overdue` dengan `due_at` = hari ini + N (`reminder_before_due`) dan = hari ini (`reminder_due`); N = 0 hanya `reminder_due`; termasuk pelanggan `terminated`; tanpa catch-up; satu invoice gagal tidak menghentikan yang lain dan command keluar gagal | Invoice pelanggan berhenti masih ditagih (docs/04); pengingat bersifat tepat waktu |
 | 2026-10-06 | W8 Template default pindah ke `MessageTemplateKey::defaultBody()` (dipakai seeder); `MessageTemplateRenderer` membiarkan placeholder tak dikenal, template nonaktif/tidak ada → tidak dikirim (+ `Log::warning` bila tidak ada). `TestCase` memasang `FakeMessageSender`; helper `fakeMessages()`, dan `fakeGateway()` dipindah ke `tests/Pest.php`. Test stub `NotImplementedException` di `ContainerBindingTest` diganti test driver `log` | Satu sumber template default; stub terakhir sudah diimplementasikan |
+| 2026-10-06 | L1 `ReportService` + `ReportCsvExporter` di `app/Services/Reports` (sesuai prompt), tanpa interface; DTO di `app/Data/Reports`. docs/02 mencatat bahwa `Services` kini juga berisi query service internal | Hanya membaca database sehingga tidak perlu di-fake; CLAUDE.md menyebut `Services` untuk integrasi eksternal |
+| 2026-10-06 | L2 Pendapatan = pembayaran `review_status = none` menurut bulan `paid_at` (basis kas, per metode); anomali (`needs_review`/`resolved`) bukan pendapatan dan ditampilkan terpisah di dashboard (opsi Q1-a) | Uang anomali dikembalikan manual; pembayaran mundur masuk bulan uang diterima (sejalan P7) |
+| 2026-10-06 | L3 Tunggakan = `unpaid`/`overdue` dengan `due_at < hari ini` (scope `Invoice::pastDue`, kolom dikualifikasi dan tanpa `DATE()` agar index terpakai), termasuk pelanggan `terminated`; umur = hari sejak jatuh tempo, kelompok di enum `OutstandingAgeBucket` (0–7, 8–30, 31+). Database mengagregasi per umur, kelompok digabung di PHP (opsi Q2-a) | Sama dengan aturan overdue B6; `whereDate` di `pastGracePeriod` membungkus kolom sehingga tidak dipakai; CASE SQL yang dibangun dinamis ditolak Larastan (`literal-string`) dan menggandakan batas kelompok |
+| 2026-10-06 | L4 Pergerakan pelanggan dari `activity_logs` (jumlah pelanggan berbeda): baru = `customer.activated` menurut `properties.installed_at`, berhenti = `customer.terminated`, terisolir = `customer.isolated` dengan `previous_isolation_reason` null. Migration baru: index (`action`, `created_at`) (opsi Q3-a) | Kolom `isolated_at`/`terminated_at`/`installed_at` ditimpa saat status berubah lagi; menyelesaikan utang teknis review T03 #10 |
+| 2026-10-06 | L5 `dashboardSummary()` di-cache 5 menit sebagai array (`cache.serializable_classes = false`), dihapus lewat `DB::afterCommit` oleh event `saved` model `Payment` dan `Invoice`; perubahan status pelanggan menunggu TTL. "Jatuh tempo minggu ini" = hari ini s.d. H+6 (opsi Q4-a). Tambahan: pembayaran `needs_review` dan pelanggan `network_error_at` (opsi Q6) | Menghapus cache di dalam transaksi membuat dashboard yang dibuka sebelum commit menyimpan angka lama selama 5 menit |
+| 2026-10-06 | L6 Ekspor CSV: rincian pembayaran (termasuk anomali), tunggakan, rekap pendapatan 12 bulan. UTF-8 BOM, pemisah `;`, nominal integer, sel berawalan `= + - @` diberi awalan `'`; ditulis ke stream dengan `lazyById(1000)` (urut ID), `download()` membungkus menjadi `StreamedResponse` (opsi Q5) | Excel berlocale Indonesia memakai `;`; `cursor()` tetap memuat seluruh hasil karena PDO MySQL buffered; `lazyById` mengabaikan urutan lain sehingga diurutkan ID; nama pelanggan berasal dari input |
+| 2026-10-06 | L7 `phpunit.xml` menetapkan `WHATSAPP_DRIVER=fonnte` | `.env` lokal berisi `WHATSAPP_DRIVER=log` (saran utang teknis T07) dan membuat `ConfigTest` serta `ContainerBindingTest` gagal; test tidak boleh bergantung pada `.env` pengembang |
 
 ## Utang teknis
 
@@ -126,7 +133,6 @@ Hal yang sengaja ditunda untuk dikerjakan nanti.
 - Uji manual ke Mikrotik CHR (tes koneksi, isolir, aktivasi, nonaktif secret) belum dilakukan; implementasi baru diuji dengan client palsu.
 - Pelanggan yang di-soft-delete tetap memegang `pppoe_username` di router-nya (unique index mencakup baris terhapus), sehingga data yang salah input tidak bisa didaftarkan ulang dengan username yang sama. Opsi: ubah username saat dihapus, atau hard delete untuk pelanggan tanpa invoice. Putuskan sebelum Tahap 09.
 - Paket bisa dinonaktifkan lewat dua jalan: `DeactivatePackage` (log `package.deactivated`) dan `UpdatePackage` dengan `is_active` (log `package.updated`). Pertimbangkan `ActivatePackage` dan keluarkan `is_active` dari `UpdatePackage` saat controller dibuat di Tahap 09 (review T03 #9).
-- `ReactivateCustomer` mengosongkan `installed_at`; tanggal pasang pertama hanya tersisa di activity log. Putuskan definisi "pelanggan baru" sebelum laporan Tahap 08 (review T03 #10).
 - Aturan validasi bersama memakai dua pola: method statis di `StorePackageRequest`/`StoreRouterRequest` dan trait `app/Concerns/CustomerValidationRules`. Satukan ke pola trait saat menyentuh Form Request lagi (review T03 #11).
 - Hapus user oleh admin (Tahap 09) akan gagal untuk user yang punya pembayaran/log karena FK `restrict` (D5). Action `DeleteUser` perlu menolak dengan pesan jelas (atau menonaktifkan user) dan menolak admin menghapus dirinya sendiri.
 - Test `TerminateCustomer` (Tahap 03) memakai `Queue::fake()` yang mengabaikan `afterCommit()`, sehingga belum membuktikan job tidak terkirim saat rollback; pola test dengan queue `sync` + `Queue::before()` ada di `ActivateNewCustomerTest`.
@@ -139,3 +145,7 @@ Hal yang sengaja ditunda untuk dikerjakan nanti.
 - Uji manual ke Fonnte sungguhan dan tampilan halaman tagihan di HP (QR Midtrans sandbox, polling) belum dilakukan; implementasi baru diuji dengan fake.
 - `NotImplementedException` tidak dipakai lagi setelah stub terakhir diimplementasikan; bisa dihapus.
 - `.env` lokal belum berisi `WHATSAPP_DRIVER`; default `fonnte` tanpa token membuat setiap pesan tercatat `failed`. Untuk development set `WHATSAPP_DRIVER=log`.
+- Tahap 09: controller dan route laporan (`reports.view`): halaman laporan dengan `outstandingInvoicesQuery()->paginate()`, dashboard memakai `dashboardSummary()`, dan unduhan CSV lewat `ReportCsvExporter::download()` dengan validasi tahun/rentang tanggal (Form Request).
+- Laporan pergerakan pelanggan hanya mengenal kejadian yang tercatat di `activity_logs`; data `DemoSeeder` dan data migrasi lama tidak muncul. Jika perlu, seeder demo bisa dibuat lewat Action.
+- Ekspor tunggakan diurutkan menurut ID invoice (bukan umur) karena `lazyById`; urutkan di spreadsheet bila perlu.
+- `MarkOverdueInvoices` memakai query update massal (tanpa event `saved`) sehingga tidak menghapus cache dashboard; tidak berpengaruh karena definisi tunggakan sudah memakai `due_at`, bukan status `overdue`.

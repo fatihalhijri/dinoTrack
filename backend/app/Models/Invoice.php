@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\InvoiceStatus;
+use App\Services\Reports\ReportService;
 use Carbon\CarbonImmutable;
 use Database\Factories\InvoiceFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -54,6 +55,14 @@ class Invoice extends Model
         'discount' => 0,
         'penalty' => 0,
     ];
+
+    /**
+     * Ringkasan dashboard memuat pendapatan dan tunggakan, jadi cache-nya dihapus setiap ada perubahan.
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn () => app(ReportService::class)->forgetDashboardSummary());
+    }
 
     /**
      * @return BelongsTo<Customer, $this>
@@ -134,6 +143,20 @@ class Invoice extends Model
     {
         $query->whereIn('status', InvoiceStatus::outstanding())
             ->whereDate('due_at', '<', $today->subDays($graceDays)->toDateString());
+    }
+
+    /**
+     * Tunggakan untuk laporan: masih harus dibayar dan jatuh temponya sudah lewat (`due_at < hari
+     * ini`), termasuk yang belum sempat ditandai overdue oleh scheduler. Kolom dikualifikasi agar
+     * aman dipakai bersama join ke customers, dan due_at dibandingkan langsung agar index terpakai.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function pastDue(Builder $query, CarbonImmutable $today): void
+    {
+        $query->whereIn($query->qualifyColumn('status'), InvoiceStatus::outstanding())
+            ->where($query->qualifyColumn('due_at'), '<', $today->toDateString());
     }
 
     /**

@@ -32,10 +32,12 @@ app/
 │   ├── PaymentGateway.php
 │   ├── NetworkController.php
 │   └── MessageSender.php
-├── Services/                Implementasi integrasi
+├── Services/                Implementasi integrasi + query service internal
 │   ├── Payment/MidtransPaymentGateway.php
 │   ├── Network/MikrotikNetworkController.php   (+ RouterOsClientFactory)
-│   └── Messaging/FonnteMessageSender.php       (+ LogMessageSender untuk development)
+│   ├── Messaging/FonnteMessageSender.php       (+ LogMessageSender untuk development)
+│   └── Reports/             ReportService, ReportCsvExporter (hanya membaca database,
+│                            tanpa interface karena tidak perlu di-fake)
 ├── Enums/                   CustomerStatus, InvoiceStatus, PaymentMethod, ...
 ├── Jobs/                    Pembungkus queue untuk Actions yang lambat
 ├── Console/Commands/        Perintah terjadwal
@@ -49,7 +51,7 @@ app/
 │                            SequenceGenerator, SettingsRepository, ActivityLogger, PhoneNumber,
 │                            IsolationRules, CustomerNetworkLock, MessageTemplateRenderer,
 │                            InvoicePaymentLink)
-└── Data/                    DTO sederhana (readonly class) bila perlu
+└── Data/                    DTO sederhana (readonly class) bila perlu; Data/Reports untuk laporan
 tests/
 ├── Feature/                 Alur end-to-end (HTTP, job, scheduler)
 ├── Unit/                    Logika murni (prorata, nomor invoice)
@@ -150,6 +152,19 @@ routes/public.php (tanpa session/cookie/CSRF), middleware signed + SubstituteBin
 GET  /tagihan/{invoice}         → Blade rincian + tombol bayar (tidak membuat charge)
 POST /tagihan/{invoice}/qris    → CreateQrisCharge → JSON qr_url / 422 lunas-batal / 503 gateway
 GET  /tagihan/{invoice}/status  → JSON status invoice + charge terakhir (polling 5 detik)
+```
+
+### Laporan & dashboard
+```
+ReportService (definisi angka: docs/04 "Laporan")
+  revenueByMonth(year)          → 1 query GROUP BY bulan + metode (pembayaran normal, menurut paid_at)
+  outstandingAging(today)       → 1 query GROUP BY umur (hari), digabung ke OutstandingAgeBucket
+  outstandingInvoicesQuery()    → Builder (join customers, kolom age_days) untuk paginate/ekspor
+  customerMovement(from, to)    → activity_logs customer.activated / terminated / isolated
+                                  (index action + created_at)
+  dashboardSummary()            → Cache 5 menit; dihapus setelah commit oleh Payment/Invoice::saved
+ReportCsvExporter → ditulis ke stream per chunk lazyById(1000), UTF-8 BOM, pemisah `;`,
+  sel berawalan = + - @ diberi awalan ' ; download() membungkus jadi StreamedResponse
 ```
 
 ## Binding interface

@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentReviewStatus;
+use App\Services\Reports\ReportService;
 use Carbon\CarbonImmutable;
 use Database\Factories\PaymentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -45,6 +46,14 @@ class Payment extends Model
     protected $attributes = [
         'review_status' => PaymentReviewStatus::None->value,
     ];
+
+    /**
+     * Ringkasan dashboard memuat pendapatan dan tunggakan, jadi cache-nya dihapus setiap ada perubahan.
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn () => app(ReportService::class)->forgetDashboardSummary());
+    }
 
     /**
      * @return BelongsTo<Invoice, $this>
