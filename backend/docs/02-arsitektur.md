@@ -25,14 +25,15 @@ app/
 │   │                        IssueInvoice, MarkOverdueInvoices, CancelInvoice, ReissueInvoice
 │   ├── Payments/            CreateQrisCharge, MarkInvoicePaid, RecordManualPayment,
 │   │                        ProcessGatewayNotification, ReconcilePendingCharges
-│   └── Network/             IsolateCustomer, ActivateCustomer
+│   └── Network/             IsolateCustomer, ActivateCustomer, ApplyCustomerProfile,
+│                            IsolateOverdueCustomers, IsolateCustomerManually, ActivateCustomerManually
 ├── Contracts/               Interface integrasi
 │   ├── PaymentGateway.php
 │   ├── NetworkController.php
 │   └── MessageSender.php
 ├── Services/                Implementasi integrasi
 │   ├── Payment/MidtransPaymentGateway.php
-│   ├── Network/MikrotikNetworkController.php
+│   ├── Network/MikrotikNetworkController.php   (+ RouterOsClientFactory)
 │   └── Messaging/FonnteMessageSender.php
 ├── Enums/                   CustomerStatus, InvoiceStatus, PaymentMethod, ...
 ├── Jobs/                    Pembungkus queue untuk Actions yang lambat
@@ -44,7 +45,8 @@ app/
 ├── Models/
 ├── Policies/
 ├── Support/                 Helper (Money, BillingPeriod, ProrataCalculator, InvoiceNumberGenerator,
-│                            SequenceGenerator, SettingsRepository, ActivityLogger, PhoneNumber)
+│                            SequenceGenerator, SettingsRepository, ActivityLogger, PhoneNumber,
+│                            IsolationRules, CustomerNetworkLock)
 └── Data/                    DTO sederhana (readonly class) bila perlu
 tests/
 ├── Feature/                 Alur end-to-end (HTTP, job, scheduler)
@@ -97,13 +99,34 @@ Kasir → RecordManualPayment (cash/transfer, nominal pas, tanggal bayar boleh m
 
 ### Isolir otomatis
 ```
-Scheduler (harian 01:00)
-  → MarkOverdueInvoices
-  → cari pelanggan dengan tagihan lewat masa toleransi
-  → dispatch IsolateCustomerJob per pelanggan
-      → NetworkController::isolate()  (ganti profil PPP + kick sesi)
-      → status = isolated, catat log, kirim WA pemberitahuan
+Scheduler (harian 01:00) → MarkOverdueInvoices
+Scheduler (harian 01:15) → IsolateOverdueCustomers (dilewati jika billing.auto_isolate = false)
+  → pelanggan active dengan invoice lewat toleransi (IsolationRules)
+  → dispatch IsolateCustomerJob per pelanggan (unik per pelanggan + alasan)
+      → IsolateCustomer, di bawah CustomerNetworkLock
+          → cek ulang syarat (bisa sudah bayar) → dilewati tanpa menyentuh router
+          → NetworkController::isolate()  (ganti profil PPP + kick sesi)
+          → transaksi: lock pelanggan, status = isolated, log customer.isolated
+          → dispatch SendIsolationNotificationJob (afterCommit)
+          → jika ternyata sudah lunas selama router dipanggil → dispatch ActivateCustomerJob
 ```
+
+### Perintah router
+```
+Isolir / buka isolir / pasang profil / nonaktif secret
+  → job (4 percobaan, backoff 30s/2m/10m; DisableCustomerSecretJob 5 percobaan)
+  → CustomerNetworkLock (cache lock per pelanggan, reentrant dalam satu proses)
+  → router dulu, status database hanya berubah jika router berhasil
+  → RouterUnreachableException: dicoba ulang
+    SecretNotFoundException / RouterCommandException: langsung gagal
+  → failed(): Log::error + activity log + customers.network_error_at (tanda admin),
+    dikosongkan saat perintah router berikutnya berhasil
+```
+
+Pemicu `ApplyCustomerProfileJob` (pelanggan `active` saja): aktivasi pelanggan
+baru, ganti paket yang berlaku, koreksi paket saat terbit ulang. Pemicu
+`ActivateCustomerJob`: pembayaran, pembatalan invoice, isolir yang balapan
+dengan pembayaran, dan admin (`ActivateCustomerManually`).
 
 ## Binding interface
 
@@ -115,14 +138,18 @@ $this->app->bind(NetworkController::class, MikrotikNetworkController::class);
 $this->app->bind(MessageSender::class, FonnteMessageSender::class);
 ```
 
-Di test: `$this->app->instance(PaymentGateway::class, new FakePaymentGateway);`
+Di test: `$this->app->instance(PaymentGateway::class, new FakePaymentGateway);`.
+`Tests\TestCase` memasang `FakeNetworkController` untuk setiap test agar job
+router yang ikut berjalan di queue `sync` tidak pernah menghubungi router
+sungguhan; test yang memeriksa panggilan memakai helper `fakeNetwork()`.
 
 ## Jadwal (routes/console.php)
 
 | Waktu | Tugas |
 |---|---|
 | 00:10 harian | Generate tagihan |
-| 01:00 harian | Tandai overdue + isolir |
+| 01:00 harian | Tandai overdue |
+| 01:15 harian | Isolir otomatis |
 | 09:00 harian | Pengingat H-3 dan hari jatuh tempo |
 | tiap jam | Rekonsiliasi pembayaran pending ke gateway |
 | harian | Prune log lama, failed jobs lama |

@@ -195,9 +195,36 @@ terminated ──(berlangganan lagi)──> pending
   tidak menghalangi aktivasi.
 - **Isolir manual** oleh admin mengisi `isolation_reason = manual`. Isolir
   manual **tidak** dibuka oleh pembayaran; hanya admin yang bisa membukanya.
-- Isolir/aktivasi manual oleh admin wajib menyertakan alasan dan tercatat di log.
+- Isolir/aktivasi manual oleh admin wajib menyertakan alasan (minimal 5
+  karakter) dan tercatat di log.
+- Pelanggan yang sedang diisolir otomatis boleh diisolir manual: alasannya
+  berubah menjadi `manual` tanpa perintah router baru, sehingga pembayaran
+  tidak lagi membukanya.
+- Admin boleh membuka isolir apa pun, termasuk pelanggan yang masih
+  menunggak. Jika tunggakannya masih lewat toleransi, isolir otomatis
+  berikutnya (01:15) akan mengisolirnya lagi; admin diberi peringatan saat
+  membuka isolir (keputusan 2026-10-05).
+- Syarat isolir dan aktivasi otomatis dicek ulang saat job berjalan: pelanggan
+  yang membayar sebelum job berjalan tidak diisolir. Jika pembayaran masuk
+  tepat saat router sedang mengisolir, status tetap ditulis `isolated` (sesuai
+  router) lalu aktivasi langsung dijadwalkan.
 - Jika perintah ke router gagal, status di database **tidak berubah**; job
-  dicoba ulang. Setelah semua percobaan gagal, admin diberi tanda (log + flag).
+  dicoba ulang. Setelah semua percobaan gagal, admin diberi tanda: log error,
+  activity log, dan `customers.network_error_at`.
+
+## Halaman isolir
+
+- `GET /isolir`, tujuan redirect Mikrotik. Tanpa session dan cookie karena
+  setiap request HTTP perangkat yang diisolir diarahkan ke sini.
+- Menampilkan nama usaha (`business.name`, default `APP_NAME`), pesan isolir,
+  cara bayar, dan kontak WA admin (`business.whatsapp`) bila diisi.
+- Pelanggan **tidak** dikenali dari IP: lalu lintas pelanggan biasanya
+  di-masquerade, IP lewat query string mudah dipalsukan, dan setiap tampilan
+  akan memanggil router.
+- Cek tagihan memakai kode pelanggan + 4 digit terakhir nomor WhatsApp. Semua
+  kegagalan memakai pesan yang sama. Dibatasi 20 cek/menit per IP dan 10
+  cek/jam per kode pelanggan; tampilan biasa 120/menit per IP.
+- Link bayar QRIS ditambahkan bersama halaman tagihan publik (Tahap 09).
 
 ## Ganti paket
 

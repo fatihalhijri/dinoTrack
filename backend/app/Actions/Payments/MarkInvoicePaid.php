@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Payments;
 
-use App\Enums\CustomerStatus;
 use App\Enums\InvoiceStatus;
-use App\Enums\IsolationReason;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentReviewStatus;
 use App\Jobs\ActivateCustomerJob;
@@ -17,8 +15,8 @@ use App\Models\Payment;
 use App\Models\PaymentCharge;
 use App\Models\User;
 use App\Support\ActivityLogger;
+use App\Support\IsolationRules;
 use App\Support\Money;
-use App\Support\SettingsRepository;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -33,7 +31,7 @@ use Illuminate\Validation\ValidationException;
 final class MarkInvoicePaid
 {
     public function __construct(
-        private readonly SettingsRepository $settings,
+        private readonly IsolationRules $rules,
         private readonly ActivityLogger $logger,
     ) {}
 
@@ -67,7 +65,8 @@ final class MarkInvoicePaid
 
             $invoice->update(['status' => InvoiceStatus::Paid, 'paid_at' => $paidAt]);
 
-            $shouldActivate = $this->shouldActivate($customer);
+            // Dinilai setelah invoice ini lunas, sehingga yang dihitung hanya tunggakan lain.
+            $shouldActivate = $this->rules->shouldAutoActivate($customer, today());
 
             $this->logger->log('payment.received', $payment, $receivedBy, [
                 'invoice_number' => $invoice->number,
@@ -101,16 +100,5 @@ final class MarkInvoicePaid
                 'amount' => sprintf('Nominal pembayaran harus sama dengan total tagihan %s.', Money::format($invoice->total)),
             ]);
         }
-    }
-
-    /**
-     * Dipanggil setelah invoice ini ditandai lunas, sehingga yang dihitung hanya tunggakan lain.
-     */
-    private function shouldActivate(Customer $customer): bool
-    {
-        return $customer->status === CustomerStatus::Isolated
-            && $customer->isolation_reason === IsolationReason::Overdue
-            && $this->settings->autoActivate()
-            && ! $customer->invoices()->pastGracePeriod(today(), $this->settings->graceDays())->exists();
     }
 }

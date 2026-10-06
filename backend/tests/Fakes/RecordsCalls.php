@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Fakes;
 
+use Closure;
 use PHPUnit\Framework\Assert;
 use Throwable;
 
@@ -18,6 +19,22 @@ trait RecordsCalls
     private ?Throwable $failure = null;
 
     private int $remainingFailures = 0;
+
+    /** @var array<string, Closure(): mixed> */
+    private array $callbacks = [];
+
+    /**
+     * Jalankan $callback setiap kali $method dipanggil, sebelum kegagalan terjadwal dilempar.
+     * Dipakai untuk mensimulasikan kejadian yang berlangsung selama panggilan ke layanan luar.
+     *
+     * @param  Closure(): mixed  $callback
+     */
+    public function whenCalled(string $method, Closure $callback): static
+    {
+        $this->callbacks[$method] = $callback;
+
+        return $this;
+    }
 
     /** Semua panggilan berikutnya melempar $exception. */
     public function failWith(Throwable $exception): static
@@ -87,6 +104,10 @@ trait RecordsCalls
     private function record(string $method, array $args = []): void
     {
         $this->calls[] = ['method' => $method, 'args' => $args];
+
+        if (isset($this->callbacks[$method])) {
+            ($this->callbacks[$method])();
+        }
 
         if ($this->failure !== null && $this->remainingFailures > 0) {
             $this->remainingFailures--;

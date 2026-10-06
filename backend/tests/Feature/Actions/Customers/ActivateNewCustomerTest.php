@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Customers\ActivateNewCustomer;
 use App\Enums\CustomerStatus;
+use App\Jobs\ApplyCustomerProfileJob;
 use App\Jobs\SendInvoiceNotificationJob;
 use App\Models\ActivityLog;
 use App\Models\Customer;
@@ -154,19 +155,24 @@ it('tidak mengirim notifikasi tagihan yang sudah terbit jika aktivasi gagal di t
         ->toThrow(RuntimeException::class);
 
     expect(Invoice::query()->count())->toBe(0)
-        ->and($processed)->not->toContain(SendInvoiceNotificationJob::class);
+        ->and($processed)->not->toContain(SendInvoiceNotificationJob::class)
+        ->and($processed)->not->toContain(ApplyCustomerProfileJob::class);
 });
 
-it('menjalankan notifikasi tagihan setelah aktivasi berhasil di-commit', function () {
+it('menjalankan notifikasi tagihan dan pengaktifan secret setelah aktivasi berhasil di-commit', function () {
     $processed = [];
     Queue::before(function (JobProcessing $event) use (&$processed): void {
         $processed[] = $event->job->resolveName();
     });
+    $network = fakeNetwork();
     $this->travelTo('2026-10-25 09:00');
+    $customer = pendingCustomerWithSubscription();
+    $customer->activeSubscription->package->update(['mikrotik_profile' => 'Home-20']);
 
-    app(ActivateNewCustomer::class)->handle(pendingCustomerWithSubscription(), today());
+    app(ActivateNewCustomer::class)->handle($customer, today());
 
-    expect($processed)->toBe([SendInvoiceNotificationJob::class]);
+    expect($processed)->toEqualCanonicalizing([SendInvoiceNotificationJob::class, ApplyCustomerProfileJob::class])
+        ->and($network->calls('activate')[0]['args'][1])->toBe('Home-20');
 });
 
 it('menolak aktivasi pelanggan yang tidak punya langganan aktif', function () {

@@ -3,10 +3,16 @@
 declare(strict_types=1);
 
 use App\Actions\Invoices\CancelInvoice;
+use App\Enums\CustomerStatus;
 use App\Enums\InvoiceStatus;
+use App\Enums\IsolationReason;
+use App\Jobs\ActivateCustomerJob;
 use App\Models\ActivityLog;
+use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
 
 it('membatalkan invoice yang belum dibayar dengan alasan', function (InvoiceStatus $status) {
@@ -50,3 +56,53 @@ it('menolak pembatalan tanpa alasan atau dengan alasan terlalu pendek', function
     'kosong' => ['   ', 'Alasan pembatalan wajib diisi.'],
     'terlalu pendek setelah dipangkas' => ['  abcd  ', 'Alasan pembatalan minimal berisi 5 karakter.'],
 ]);
+
+it('mengaktifkan pelanggan isolir otomatis yang tidak lagi menunggak setelah tagihannya dibatalkan', function () {
+    $this->travelTo('2026-10-20 10:00');
+    $network = fakeNetwork();
+    $customer = customerOnProfile(Customer::factory()->isolated(IsolationReason::Overdue));
+    $invoice = invoiceDueAt($customer, '2026-10-01');
+
+    app(CancelInvoice::class)->handle($invoice, 'Salah input paket', User::factory()->create());
+
+    $network->assertCalled('activate', 1);
+    expect($customer->fresh()->status)->toBe(CustomerStatus::Active)
+        ->and(ActivityLog::query()->where('action', 'invoice.cancelled')->sole()->properties['activation_queued'])->toBeTrue();
+});
+
+it('tidak mengaktifkan pelanggan setelah pembatalan jika masih ada tunggakan lain atau isolirnya manual', function (IsolationReason $reason, bool $hasOtherArrears) {
+    $this->travelTo('2026-10-20 10:00');
+    Queue::fake([ActivateCustomerJob::class]);
+    $customer = customerOnProfile(Customer::factory()->isolated($reason));
+    $invoice = invoiceDueAt($customer, '2026-10-01');
+
+    if ($hasOtherArrears) {
+        invoiceDueAt($customer, '2026-10-16');
+    }
+
+    app(CancelInvoice::class)->handle($invoice, 'Salah input paket', User::factory()->create());
+
+    Queue::assertNotPushed(ActivateCustomerJob::class);
+})->with([
+    'tunggakan lain lewat toleransi' => [IsolationReason::Overdue, true],
+    'isolir manual' => [IsolationReason::Manual, false],
+]);
+
+it('tidak menjalankan aktivasi jika transaksi pemanggil pembatalan dibatalkan', function () {
+    $this->travelTo('2026-10-20 10:00');
+    $network = fakeNetwork();
+    $customer = customerOnProfile(Customer::factory()->isolated(IsolationReason::Overdue));
+    $invoice = invoiceDueAt($customer, '2026-10-01');
+
+    try {
+        DB::transaction(function () use ($invoice): void {
+            app(CancelInvoice::class)->handle($invoice, 'Salah input paket', User::factory()->create());
+
+            throw new RuntimeException('Simulasi galat.');
+        });
+    } catch (RuntimeException) {
+    }
+
+    $network->assertNotCalled('activate');
+    expect($customer->fresh()->status)->toBe(CustomerStatus::Isolated);
+});

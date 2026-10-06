@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Invoices\GenerateMonthlyInvoices;
 use App\Actions\Invoices\ReissueInvoice;
 use App\Enums\InvoiceStatus;
+use App\Jobs\ApplyCustomerProfileJob;
 use App\Jobs\SendInvoiceNotificationJob;
 use App\Models\ActivityLog;
 use App\Models\Customer;
@@ -128,3 +129,20 @@ it('tidak menagih otomatis periode yang dibatalkan saat generator berjalan', fun
 
     expect(Invoice::query()->whereBelongsTo($subscription)->where('period_start', '2026-10-10')->count())->toBe(1);
 });
+
+it('memasang profil paket koreksi di router hanya untuk pelanggan aktif dengan langganan berjalan', function (Closure $makeCustomer, ?string $endsAt, bool $expectsProfileJob) {
+    Queue::fake([SendInvoiceNotificationJob::class, ApplyCustomerProfileJob::class]);
+    $subscription = billedSubscription(billingDay: 10, customer: $makeCustomer());
+    $subscription->update(['ends_at' => $endsAt]);
+    $cancelled = cancelledInvoiceFor($subscription);
+
+    app(ReissueInvoice::class)->handle($cancelled, Package::factory()->create()->id);
+
+    $expectsProfileJob
+        ? Queue::assertPushed(ApplyCustomerProfileJob::class, fn (ApplyCustomerProfileJob $job) => $job->customer->id === $subscription->customer_id)
+        : Queue::assertNotPushed(ApplyCustomerProfileJob::class);
+})->with([
+    'aktif' => [fn () => Customer::factory()->active()->create(), null, true],
+    'diisolir' => [fn () => Customer::factory()->isolated()->create(), null, false],
+    'berhenti' => [fn () => Customer::factory()->terminated()->create(), '2026-10-20', false],
+]);

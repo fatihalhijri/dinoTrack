@@ -6,11 +6,15 @@ use App\Contracts\PaymentGateway;
 use App\Enums\InvoiceStatus;
 use App\Enums\PaymentChargeStatus;
 use App\Exceptions\PaymentGatewayException;
+use App\Jobs\IsolateCustomerJob;
+use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\PaymentCharge;
+use App\Models\Setting;
 use Illuminate\Console\Command;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Facades\Queue;
 use Tests\Fakes\FakePaymentGateway;
 
 it('menerbitkan tagihan untuk tanggal simulasi', function () {
@@ -69,7 +73,7 @@ it('menolak --date di production', function (string $command) {
     $this->artisan($command, ['--date' => '2026-10-10'])
         ->expectsOutputToContain('tidak boleh dipakai di production')
         ->assertExitCode(Command::INVALID);
-})->with(['billing:generate-invoices', 'billing:mark-overdue']);
+})->with(['billing:generate-invoices', 'billing:mark-overdue', 'billing:isolate-overdue']);
 
 it('menjadwalkan command tagihan sesuai docs/02 tanpa tumpang tindih dan di satu server', function (string $command, string $expression) {
     $event = collect(app(Schedule::class)->events())
@@ -84,6 +88,7 @@ it('menjadwalkan command tagihan sesuai docs/02 tanpa tumpang tindih dan di satu
 })->with([
     'generate tagihan 00:10' => ['billing:generate-invoices', '10 0 * * *'],
     'tandai overdue 01:00' => ['billing:mark-overdue', '0 1 * * *'],
+    'isolir 01:15 setelah overdue' => ['billing:isolate-overdue', '15 1 * * *'],
     'rekonsiliasi pembayaran tiap jam' => ['billing:reconcile-payments', '0 * * * *'],
 ]);
 
@@ -142,4 +147,26 @@ it('melanjutkan rekonsiliasi dan keluar dengan kode gagal jika satu charge galat
         ->assertFailed();
 
     expect($next->invoice->fresh()->status)->toBe(InvoiceStatus::Paid);
+});
+
+it('menjadwalkan isolir pelanggan yang menunggak lewat toleransi pada tanggal simulasi', function () {
+    Queue::fake([IsolateCustomerJob::class]);
+    invoiceDueAt(customerOnProfile(Customer::factory()->active()), '2026-10-16');
+
+    $this->artisan('billing:isolate-overdue', ['--date' => '2026-10-20'])
+        ->expectsOutputToContain('Isolir 2026-10-20: 1 pelanggan dijadwalkan.')
+        ->assertSuccessful();
+
+    Queue::assertPushed(IsolateCustomerJob::class, fn (IsolateCustomerJob $job) => $job->today->toDateString() === '2026-10-20');
+});
+
+it('memberi tahu bahwa isolir otomatis dimatikan', function () {
+    Queue::fake([IsolateCustomerJob::class]);
+    Setting::query()->create(['key' => 'billing.auto_isolate', 'value' => false]);
+
+    $this->artisan('billing:isolate-overdue')
+        ->expectsOutputToContain('Isolir otomatis dimatikan')
+        ->assertSuccessful();
+
+    Queue::assertNothingPushed();
 });

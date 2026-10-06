@@ -35,6 +35,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property CarbonImmutable|null $isolated_at
  * @property IsolationReason|null $isolation_reason
  * @property CarbonImmutable|null $terminated_at
+ * @property CarbonImmutable|null $network_error_at perintah router terakhir gagal setelah semua percobaan; tanda untuk admin
+ * @property string|null $network_error
  * @property string|null $notes
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
@@ -42,7 +44,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 #[Fillable([
     'code', 'name', 'phone', 'address', 'odp', 'latitude', 'longitude', 'router_id', 'pppoe_username',
-    'status', 'installed_at', 'isolated_at', 'isolation_reason', 'terminated_at', 'notes',
+    'status', 'installed_at', 'isolated_at', 'isolation_reason', 'terminated_at', 'network_error_at', 'network_error', 'notes',
 ])]
 class Customer extends Model
 {
@@ -120,6 +122,17 @@ class Customer extends Model
     }
 
     /**
+     * Pelanggan yang perintah routernya gagal dan perlu diperiksa admin.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function hasNetworkError(Builder $query): void
+    {
+        $query->whereNotNull('network_error_at');
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -132,6 +145,7 @@ class Customer extends Model
             'isolated_at' => 'datetime',
             'isolation_reason' => IsolationReason::class,
             'terminated_at' => 'datetime',
+            'network_error_at' => 'datetime',
         ];
     }
 }

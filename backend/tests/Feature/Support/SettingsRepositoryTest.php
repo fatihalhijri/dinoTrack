@@ -52,3 +52,28 @@ it('membaca pengaturan sekali per request lalu memakai nilai yang tersimpan', fu
     expect(DB::getQueryLog())->toBe([]);
     Cache::shouldNotHaveReceived('rememberForever');
 });
+
+it('memakai nama aplikasi selama profil usaha belum diisi', function (?string $name, string $expected) {
+    config(['app.name' => 'DinoTrack']);
+
+    if ($name !== null) {
+        Setting::query()->create(['key' => 'business.name', 'value' => $name]);
+    }
+
+    expect(app(SettingsRepository::class)->businessName())->toBe($expected);
+})->with([
+    'belum ada' => [null, 'DinoTrack'],
+    'kosong' => ['  ', 'DinoTrack'],
+    'diisi admin' => ['Dino Net', 'Dino Net'],
+]);
+
+it('menormalkan nomor WhatsApp admin dan mengembalikan null jika belum diisi', function (?string $phone, ?string $expected) {
+    if ($phone !== null) {
+        Setting::query()->create(['key' => 'business.whatsapp', 'value' => $phone]);
+    }
+
+    expect(app(SettingsRepository::class)->businessWhatsapp())->toBe($expected);
+})->with([
+    'belum ada' => [null, null],
+    'awalan 08' => ['0812-3456-7890', '6281234567890'],
+]);

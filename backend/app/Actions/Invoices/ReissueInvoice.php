@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Invoices;
 
+use App\Enums\CustomerStatus;
 use App\Enums\InvoiceStatus;
+use App\Jobs\ApplyCustomerProfileJob;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Package;
@@ -83,8 +85,9 @@ final class ReissueInvoice
     }
 
     /**
-     * Koreksi salah input: berlaku untuk periode yang diterbitkan ulang dan seterusnya.
-     * Profil PPPoE di router menyusul di Tahap 06.
+     * Koreksi salah input: berlaku untuk periode yang diterbitkan ulang dan seterusnya. Profil
+     * PPPoE di router ikut diganti hanya untuk pelanggan `active` pada subscription yang masih
+     * berjalan (pelanggan `isolated` mendapat profil barunya saat isolir dibuka).
      */
     private function correctPackage(Subscription $subscription, int $packageId, Invoice $cancelled, ?User $by): void
     {
@@ -107,7 +110,9 @@ final class ReissueInvoice
             'next_package_id' => $subscription->next_package_id === $package->id ? null : $subscription->next_package_id,
         ]);
 
-        $this->logger->log('subscription.package_corrected', $subscription->customer, $by, [
+        $customer = $subscription->customer;
+
+        $this->logger->log('subscription.package_corrected', $customer, $by, [
             'subscription_id' => $subscription->id,
             'from_package_id' => $previous['package_id'],
             'from_price' => $previous['price'],
@@ -115,5 +120,9 @@ final class ReissueInvoice
             'to_price' => $package->price,
             'cancelled_invoice_id' => $cancelled->id,
         ]);
+
+        if ($subscription->ends_at === null && $customer->status === CustomerStatus::Active) {
+            ApplyCustomerProfileJob::dispatch($customer)->afterCommit();
+        }
     }
 }

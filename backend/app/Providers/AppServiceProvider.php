@@ -42,6 +42,12 @@ class AppServiceProvider extends ServiceProvider
 {
     public const int WEBHOOK_RATE_LIMIT_PER_MINUTE = 120;
 
+    public const int ISOLATION_PAGE_VIEWS_PER_MINUTE = 120;
+
+    public const int ISOLATION_LOOKUPS_PER_MINUTE = 20;
+
+    public const int ISOLATION_LOOKUPS_PER_CODE_PER_HOUR = 10;
+
     /**
      * Register any application services.
      */
@@ -73,6 +79,28 @@ class AppServiceProvider extends ServiceProvider
     protected function configureRateLimiting(): void
     {
         RateLimiter::for('webhooks', fn (Request $request): Limit => Limit::perMinute(self::WEBHOOK_RATE_LIMIT_PER_MINUTE)->by($request->ip()));
+        RateLimiter::for('isolation-page', $this->isolationPageLimits(...));
+    }
+
+    /**
+     * Banyak pelanggan bisa tampil dengan satu IP publik (NAT router), jadi tampilan biasa diberi
+     * batas longgar. Cek tagihan dibatasi per IP dan per kode pelanggan agar 4 digit nomor WA
+     * tidak bisa ditebak dengan mencoba semua kombinasi.
+     *
+     * @return Limit|list<Limit>
+     */
+    protected function isolationPageLimits(Request $request): Limit|array
+    {
+        $code = strtoupper($request->string('kode')->trim()->toString());
+
+        if ($code === '') {
+            return Limit::perMinute(self::ISOLATION_PAGE_VIEWS_PER_MINUTE)->by('view:'.$request->ip());
+        }
+
+        return [
+            Limit::perMinute(self::ISOLATION_LOOKUPS_PER_MINUTE)->by('lookup-ip:'.$request->ip()),
+            Limit::perHour(self::ISOLATION_LOOKUPS_PER_CODE_PER_HOUR)->by('lookup-code:'.$code),
+        ];
     }
 
     /**

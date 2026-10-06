@@ -43,6 +43,12 @@ return [
         'qris_expiry_minutes' => 15,
     ],
 
+    // Kredensial router disimpan per router di database (terenkripsi), bukan di .env.
+    'mikrotik' => [
+        'connect_timeout' => 5,
+        'socket_timeout' => 10,
+    ],
+
     'whatsapp' => [
         'driver' => env('WHATSAPP_DRIVER', 'fonnte'),
     ],

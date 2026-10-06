@@ -6,6 +6,7 @@ namespace App\Actions\Customers;
 
 use App\Actions\Invoices\GenerateInvoiceForSubscription;
 use App\Enums\CustomerStatus;
+use App\Jobs\ApplyCustomerProfileJob;
 use App\Models\Customer;
 use App\Models\Router;
 use App\Models\User;
@@ -20,7 +21,7 @@ use Illuminate\Validation\ValidationException;
  * `active`, tanggal mulai langganan diisi, dan tagihan pertama langsung terbit. Jika tanggal
  * pasang mundur melewati `billing_day`, periode berikutnya ikut ditagih.
  *
- * Pengaktifan secret PPPoE di router menyusul di Tahap 06.
+ * Secret PPPoE di-enable dengan profil paket lewat ApplyCustomerProfileJob setelah commit.
  */
 final class ActivateNewCustomer
 {
@@ -60,6 +61,9 @@ final class ActivateNewCustomer
                 'installed_at' => $installedAt->toDateString(),
                 'subscription_id' => $subscription->id,
             ]);
+
+            // Router lewat job yang dicoba ulang: aktivasi tidak gagal hanya karena router sedang mati.
+            ApplyCustomerProfileJob::dispatch($customer)->afterCommit();
 
             $periods = BillingPeriod::due($installedAt, $subscription->billing_day, null, $today, fromFirstPeriod: true);
 

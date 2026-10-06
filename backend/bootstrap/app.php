@@ -22,6 +22,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->prefix('webhooks')
                 ->name('webhooks.')
                 ->group(base_path('routes/webhooks.php'));
+
+            // Halaman publik pelanggan (halaman isolir): tanpa session karena setiap request
+            // HTTP perangkat yang diisolir diarahkan ke sini.
+            Route::group([], base_path('routes/public.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Role;
 use App\Http\Requests\Customers\ChangeCustomerPackageRequest;
+use App\Http\Requests\Customers\ManualIsolationRequest;
 use App\Http\Requests\Customers\ReactivateCustomerRequest;
 use App\Http\Requests\Customers\StoreCustomerRequest;
 use App\Http\Requests\Customers\TerminateCustomerRequest;
@@ -233,3 +234,29 @@ it('hanya admin yang boleh mengaktifkan kembali dan wajib memilih paket serta ta
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['package_id', 'billing_day']);
 });
+
+it('hanya admin yang boleh mengisolir atau membuka isolir manual', function (Role $role, int $status) {
+    Route::middleware('web')->post('_test/customers/{customer}/isolation', fn (ManualIsolationRequest $request, Customer $customer) => $request->validated());
+    $customer = Customer::factory()->create();
+
+    $this->actingAs(userWithRole($role))
+        ->postJson("/_test/customers/{$customer->id}/isolation", ['reason' => 'Penyalahgunaan jaringan'])
+        ->assertStatus($status);
+})->with([
+    'admin' => [Role::Admin, 200],
+    'kasir' => [Role::Kasir, 403],
+    'teknisi' => [Role::Teknisi, 403],
+]);
+
+it('mewajibkan alasan isolir manual minimal 5 karakter', function (?string $reason, string $message) {
+    Route::middleware('web')->post('_test/customers/{customer}/isolation', fn (ManualIsolationRequest $request, Customer $customer) => $request->validated());
+    $customer = Customer::factory()->create();
+
+    $this->actingAs(userWithRole(Role::Admin))
+        ->postJson("/_test/customers/{$customer->id}/isolation", ['reason' => $reason])
+        ->assertUnprocessable()
+        ->assertJsonPath('errors.reason.0', $message);
+})->with([
+    'kosong' => [null, 'Alasan wajib diisi.'],
+    'terlalu pendek' => ['abc', 'Alasan minimal berisi 5 karakter.'],
+]);

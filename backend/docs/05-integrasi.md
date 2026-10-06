@@ -133,13 +133,40 @@ interface NetworkController
 - Lempar exception khusus (`RouterUnreachableException`,
   `SecretNotFoundException`) agar job bisa memutuskan retry atau tidak
 
+Catatan implementasi (dicocokkan dengan library 1.7.1 pada 2026-10-05):
+
+- Satu koneksi per perintah lewat `RouterOsClientFactory`: connect timeout 5
+  detik, socket timeout 10 detik, **1 percobaan** (bawaan library 10 percobaan
+  dengan jeda 1 detik akan menahan worker lebih dari semenit). Pengulangan
+  diserahkan ke queue.
+- Library tidak punya `disconnect()` publik; koneksi ditutup dengan mengirim
+  `/quit` di `finally`.
+- Secret dicari dengan `/ppp/secret/print ?name=`; tidak ada →
+  `SecretNotFoundException`.
+- **Aktivasi** juga mengirim `disabled=no` karena secret pelanggan baru atau
+  yang diaktifkan kembali mungkin sedang dinonaktifkan. **Nonaktif secret**:
+  `disabled=yes` lalu kick sesi.
+- Balasan dibaca mentah karena parser library menghilangkan penanda `!trap`;
+  perintah yang ditolak router (misalnya profil tidak ada) →
+  `RouterCommandException` (tidak dicoba ulang). Trap saat memutus sesi yang
+  sudah hilang diabaikan.
+- Gagal koneksi, socket timeout, dan login ditolak →
+  `RouterUnreachableException` berisi nama/host router, tanpa password.
+- SSL (`use_ssl`) memakai opsi bawaan library: cipher ADH tanpa verifikasi
+  sertifikat, satu-satunya cara api-ssl RouterOS berjalan tanpa sertifikat.
+  Karena itu akses API tetap wajib dibatasi ke IP server / VPN.
+
 ### Persiapan di router (dikerjakan manual oleh admin jaringan)
 
 1. PPP profile `ISOLIR` dengan `address-list=isolir`
 2. Firewall NAT: traffic HTTP dari address-list `isolir` di-redirect ke
    halaman isolir aplikasi
 3. Firewall filter: izinkan akses ke domain aplikasi dan payment gateway,
-   blokir selain itu untuk address-list `isolir`
+   blokir selain itu untuk address-list `isolir`. Pertimbangkan juga
+   mengizinkan WhatsApp agar pelanggan bisa membuka link tagihan dan
+   menghubungi admin. Redirect ke `http://<domain-aplikasi>/isolir`
+   (lebih mudah lewat web-proxy redirect daripada dst-nat, karena dst-nat
+   meneruskan header Host domain aslinya)
 4. User API khusus dengan hak terbatas (`read`, `write`, `api`), bukan admin
 5. Batasi akses API hanya dari IP server (lebih baik lewat VPN)
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Invoices\GenerateInvoiceForSubscription;
 use App\Enums\InvoiceStatus;
 use App\Enums\IsolationReason;
+use App\Jobs\ApplyCustomerProfileJob;
 use App\Jobs\SendInvoiceNotificationJob;
 use App\Models\ActivityLog;
 use App\Models\Customer;
@@ -149,3 +150,19 @@ it('melempar galat jika yang bentrok bukan periode melainkan nomor invoice', fun
 
     expect(Invoice::query()->whereBelongsTo($subscription)->exists())->toBeFalse();
 });
+
+it('memasang profil paket baru di router hanya untuk pelanggan aktif saat ganti paket berlaku', function (Closure $makeCustomer, bool $expectsProfileJob) {
+    Queue::fake([SendInvoiceNotificationJob::class, ApplyCustomerProfileJob::class]);
+    $subscription = billedSubscription(billingDay: 10, customer: $makeCustomer());
+    $subscription->update(['next_package_id' => Package::factory()->create()->id]);
+
+    generateInvoiceForPeriod($subscription, '2026-10-10', '2026-10-10');
+
+    // Pelanggan isolated tetap memakai profil isolir; profil barunya dipasang saat isolir dibuka.
+    $expectsProfileJob
+        ? Queue::assertPushed(ApplyCustomerProfileJob::class, fn (ApplyCustomerProfileJob $job) => $job->customer->id === $subscription->customer_id)
+        : Queue::assertNotPushed(ApplyCustomerProfileJob::class);
+})->with([
+    'active' => [fn () => Customer::factory()->active()->create(), true],
+    'isolated' => [fn () => Customer::factory()->isolated(IsolationReason::Overdue)->create(), false],
+]);

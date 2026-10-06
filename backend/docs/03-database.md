@@ -83,6 +83,8 @@ Bawaan Laravel + role lewat spatie/laravel-permission (`admin`, `kasir`, `teknis
 | isolated_at | timestamp nullable | |
 | isolation_reason | string nullable | `overdue` (otomatis) atau `manual` (`IsolationReason`); null jika tidak diisolir. Hanya isolir `overdue` yang dibuka otomatis saat lunas |
 | terminated_at | timestamp nullable | |
+| network_error_at | timestamp nullable | tanda untuk admin: perintah router gagal setelah semua percobaan job habis; dikosongkan saat perintah router berikutnya berhasil; index (migration `2026_10_05_183946`) |
+| network_error | string nullable | ringkasan galat terakhir |
 | notes | text nullable | |
 | softDeletes | | hanya untuk salah input; pelanggan yang sudah punya invoice tidak boleh dihapus (gunakan `terminated`) |
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Invoices;
 
 use App\Enums\CustomerStatus;
+use App\Jobs\ApplyCustomerProfileJob;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Package;
@@ -86,8 +87,9 @@ final class GenerateInvoiceForSubscription
     }
 
     /**
-     * Ganti paket berlaku mulai periode berikutnya, tanpa prorata (K10). Profil PPPoE di router
-     * belum diubah di sini; itu bagian Tahap 06.
+     * Ganti paket berlaku mulai periode berikutnya, tanpa prorata (K10). Profil PPPoE hanya
+     * diganti untuk pelanggan `active`; pelanggan `isolated` mendapat profil barunya saat isolir
+     * dibuka, agar profil isolir tidak tertimpa.
      */
     private function applyScheduledPackageChange(Subscription $subscription, Customer $customer): void
     {
@@ -106,5 +108,9 @@ final class GenerateInvoiceForSubscription
             'to_package_id' => $package->id,
             'price' => $package->price,
         ]);
+
+        if ($customer->status === CustomerStatus::Active) {
+            ApplyCustomerProfileJob::dispatch($customer)->afterCommit();
+        }
     }
 }

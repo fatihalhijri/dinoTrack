@@ -81,4 +81,25 @@ final class SettingsRepository
     {
         return (bool) $this->get('billing.auto_activate');
     }
+
+    /**
+     * Profil usaha belum punya halaman pengaturan (Tahap 09) dan tidak di-seed; selama kosong
+     * dipakai APP_NAME.
+     */
+    public function businessName(): string
+    {
+        $name = $this->get('business.name');
+
+        return is_string($name) && trim($name) !== '' ? $name : (string) config('app.name');
+    }
+
+    /**
+     * Nomor WhatsApp admin (format 62xxx) untuk tombol kontak di halaman publik; null jika belum diisi.
+     */
+    public function businessWhatsapp(): ?string
+    {
+        $phone = $this->get('business.whatsapp');
+
+        return is_string($phone) && trim($phone) !== '' ? PhoneNumber::normalize($phone) : null;
+    }
 }

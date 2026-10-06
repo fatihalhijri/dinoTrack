@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Contracts\NetworkController;
 use App\Data\GatewayNotification;
+use App\Enums\InvoiceStatus;
 use App\Enums\PaymentChargeStatus;
 use App\Enums\Role;
 use App\Models\Customer;
@@ -12,9 +14,11 @@ use App\Models\PaymentCharge;
 use App\Models\Subscription;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Database\Factories\CustomerFactory;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Fakes\FakeNetworkController;
 use Tests\TestCase;
 
 /*
@@ -61,6 +65,42 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * Router palsu baru yang dipasang di container (menggantikan bawaan TestCase).
+ */
+function fakeNetwork(): FakeNetworkController
+{
+    $network = new FakeNetworkController;
+    app()->instance(NetworkController::class, $network);
+
+    return $network;
+}
+
+/**
+ * Pelanggan dengan subscription aktif pada paket berprofil PPPoE $profile.
+ */
+function customerOnProfile(CustomerFactory $factory, string $profile = 'Home-20'): Customer
+{
+    return $factory->withSubscription(Package::factory()->create(['mikrotik_profile' => $profile]))->create();
+}
+
+/**
+ * Invoice subscription terakhir pelanggan dengan jatuh tempo tertentu (periode dimulai 7 hari
+ * sebelumnya, sehingga jatuh tempo yang berbeda tidak bentrok di unique periode).
+ */
+function invoiceDueAt(Customer $customer, string $dueAt, InvoiceStatus $status = InvoiceStatus::Overdue): Invoice
+{
+    $periodStart = CarbonImmutable::parse($dueAt)->subDays(7);
+
+    return Invoice::factory()->for($customer->subscriptions()->latest('id')->firstOrFail())->create([
+        'period_start' => $periodStart->toDateString(),
+        'period_end' => $periodStart->addMonth()->subDay()->toDateString(),
+        'issued_at' => $periodStart->toDateString(),
+        'due_at' => $dueAt,
+        'status' => $status,
+    ]);
 }
 
 /**

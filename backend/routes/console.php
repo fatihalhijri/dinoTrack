@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Schedule;
 
-// Jadwal sesuai docs/02-arsitektur.md. Isolir (Tahap 06) dan pengingat (Tahap 07) menyusul.
+// Jadwal sesuai docs/02-arsitektur.md. Pengingat (Tahap 07) menyusul.
 
 Schedule::command('billing:generate-invoices')
     ->dailyAt('00:10')
@@ -13,6 +13,12 @@ Schedule::command('billing:generate-invoices')
 
 Schedule::command('billing:mark-overdue')
     ->dailyAt('01:00')
+    ->withoutOverlapping(60)
+    ->onOneServer();
+
+// Setelah mark-overdue agar status invoice sudah terbarui saat isolir dinilai.
+Schedule::command('billing:isolate-overdue')
+    ->dailyAt('01:15')
     ->withoutOverlapping(60)
     ->onOneServer();
 
