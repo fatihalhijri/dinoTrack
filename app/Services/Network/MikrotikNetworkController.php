@@ -130,7 +130,9 @@ final class MikrotikNetworkController implements NetworkController
     {
         try {
             $client = $this->clients->make($router);
-        } catch (ClientException|ConfigException $exception) {
+        } catch (ClientException|ConfigException|StreamException $exception) {
+            // Login sudah membaca socket, sehingga host yang menerima koneksi tetapi tidak
+            // membalas (bukan RouterOS, atau port API terfilter) gagal dengan StreamException.
             throw $this->unreachable($router, $exception);
         }
 

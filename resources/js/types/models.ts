@@ -187,6 +187,8 @@ export type MessageLog = {
 export type ActivityLog = {
     id: number;
     action: string;
+    /** Label Bahasa Indonesia; aksi tanpa label berisi nama aksi mentah. */
+    action_label: string;
     user?: { id: number; name: string } | null;
     properties: Record<string, unknown> | null;
     created_at: string | null;

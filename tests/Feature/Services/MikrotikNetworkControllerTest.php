@@ -139,6 +139,13 @@ it('mengubah login API yang ditolak menjadi RouterUnreachableException', functio
         ->toThrow(RouterUnreachableException::class, 'Router Pusat');
 });
 
+it('mengubah login yang tidak dibalas router menjadi RouterUnreachableException', function () {
+    $network = mikrotik(new FakeRouterOsClient, new StreamException('Error reading 1 bytes'));
+
+    expect(fn () => $network->isOnline(mikrotikCustomer()))
+        ->toThrow(RouterUnreachableException::class, 'Error reading 1 bytes');
+});
+
 it('memberi ringkasan galat tanpa alamat router untuk data yang dilihat kasir dan teknisi', function () {
     $network = mikrotik(new FakeRouterOsClient, new BadCredentialsException('Invalid user name or password'));
     $router = Router::factory()->create(['name' => 'Router Pusat', 'host' => '10.20.30.40', 'port' => 8728]);

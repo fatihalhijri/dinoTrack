@@ -1,17 +1,8 @@
 import { Head, useForm } from '@inertiajs/react';
 import type { CustomerFormData } from '@/components/customers/customer-form';
 import CustomerForm from '@/components/customers/customer-form';
-import InputError from '@/components/input-error';
+import PackageSelect from '@/components/customers/package-select';
 import PageHeader from '@/components/page-header';
-import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { formatRupiah } from '@/lib/format';
 import {
     create as customersCreate,
     index as customersIndex,
@@ -46,39 +37,13 @@ export default function CustomersCreate({
     });
 
     const packageField = (
-        <div className="grid gap-2">
-            <Label htmlFor="customer-package">Paket</Label>
-            <Select
-                value={form.data.package_id}
-                onValueChange={(value) => form.setData('package_id', value)}
-                disabled={packages.length === 0}
-            >
-                <SelectTrigger
-                    id="customer-package"
-                    className="h-10 w-full"
-                    aria-invalid={form.errors.package_id ? true : undefined}
-                >
-                    <SelectValue placeholder="Pilih paket" />
-                </SelectTrigger>
-                <SelectContent>
-                    {packages.map((packageItem) => (
-                        <SelectItem
-                            key={packageItem.id}
-                            value={String(packageItem.id)}
-                        >
-                            {packageItem.name} · {packageItem.speed_label} ·{' '}
-                            {formatRupiah(packageItem.price)}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-            {packages.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                    Belum ada paket aktif. Hubungi admin.
-                </p>
-            ) : null}
-            <InputError message={form.errors.package_id} />
-        </div>
+        <PackageSelect
+            id="customer-package"
+            value={form.data.package_id}
+            onChange={(value) => form.setData('package_id', value)}
+            packages={packages}
+            error={form.errors.package_id}
+        />
     );
 
     return (

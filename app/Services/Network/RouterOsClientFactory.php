@@ -8,6 +8,7 @@ use App\Models\Router;
 use RouterOS\Client;
 use RouterOS\Exceptions\ClientException;
 use RouterOS\Exceptions\ConfigException;
+use RouterOS\Exceptions\StreamException;
 use RouterOS\Interfaces\ClientInterface;
 
 /**
@@ -19,6 +20,7 @@ class RouterOsClientFactory
     /**
      * @throws ClientException gagal terhubung atau login ditolak
      * @throws ConfigException
+     * @throws StreamException login tidak dibalas (socket timeout saat membaca)
      */
     public function make(Router $router): ClientInterface
     {

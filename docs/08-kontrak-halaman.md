@@ -121,7 +121,7 @@ type Invoice = {
   items?: InvoiceItem[]; payments?: Payment[]; payment_charges?: PaymentCharge[]
 }
 type MessageLog = { id: number; invoice_id: number | null; template_key: MessageTemplateKey | null; template_label: string | null; phone: string; body: string; status: MessageStatus; status_label: string; error: string | null; sent_at: string | null; created_at: string | null }
-type ActivityLog = { id: number; action: string; user?: { id: number; name: string } | null; properties: Record<string, unknown> | null; created_at: string | null }
+type ActivityLog = { id: number; action: string; action_label: string; user?: { id: number; name: string } | null; properties: Record<string, unknown> | null; created_at: string | null }
 type User = { id: number; name: string; email: string; role: Role | null; role_label: string | null; is_active: boolean; deactivated_at: string | null; created_at: string | null }
 type MessageTemplate = { id: number; key: MessageTemplateKey; label: string; body: string; is_active: boolean; updated_at: string | null }
 ```
@@ -190,7 +190,7 @@ Aksi: `POST /customers` (`name`, `phone`, `address`, `odp`, `latitude`,
 | `invoices` | Invoice[] \| null | 24 terbaru; `null` tanpa `invoices.view` (teknisi). Riwayat lengkap: `/invoices?customer_id=` |
 | `payments` | Payment[] \| null | 24 terbaru; `null` tanpa `payments.view` |
 | `messages` | MessageLog[] \| null | 24 terbaru; `null` tanpa `invoices.view` |
-| `activities` | ActivityLog[] | 24 terbaru, dengan `user` |
+| `activities` | ActivityLog[] | 24 terbaru, dengan `user`; `action_label` dari `App\Support\ActivityActionLabel` (aksi tanpa label = nama aksi mentah) |
 | `packages` | `{ id, name, speed_label, price }[]` \| null | paket aktif untuk ganti paket/aktifkan kembali; `null` tanpa `customers.update` |
 | `connection` | `{ online: boolean\|null, error: string\|null }` | **deferred** (`<Deferred data="connection">`); `online: null` jika router tidak terjangkau |
 
