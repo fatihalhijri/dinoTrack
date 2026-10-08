@@ -10,10 +10,10 @@ import { UserInfo } from '@/components/user-info';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
-import type { User } from '@/types';
+import type { AuthUser } from '@/types';
 
 type Props = {
-    user: User;
+    user: AuthUser;
 };
 
 export function UserMenuContent({ user }: Props) {
@@ -30,6 +30,11 @@ export function UserMenuContent({ user }: Props) {
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <UserInfo user={user} showEmail={true} />
                 </div>
+                {user.role_label ? (
+                    <p className="px-1 pb-1.5 text-xs text-muted-foreground">
+                        Role: {user.role_label}
+                    </p>
+                ) : null}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
@@ -41,7 +46,7 @@ export function UserMenuContent({ user }: Props) {
                         onClick={cleanup}
                     >
                         <Settings className="mr-2" />
-                        Settings
+                        Pengaturan akun
                     </Link>
                 </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -55,7 +60,7 @@ export function UserMenuContent({ user }: Props) {
                     data-test="logout-button"
                 >
                     <LogOut className="mr-2" />
-                    Log out
+                    Keluar
                 </Link>
             </DropdownMenuItem>
         </>

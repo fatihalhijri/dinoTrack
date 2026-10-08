@@ -1,32 +1,29 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useInitials } from '@/hooks/use-initials';
-import type { User } from '@/types';
+import type { AuthUser } from '@/types';
 
 export function UserInfo({
     user,
     showEmail = false,
 }: {
-    user: User;
+    user: AuthUser;
     showEmail?: boolean;
 }) {
     const getInitials = useInitials();
-    const showAvatar = Boolean(user.avatar && user.avatar !== '');
+    const subtitle = showEmail ? user.email : user.role_label;
 
     return (
         <>
             <Avatar className="h-8 w-8 overflow-hidden rounded-lg">
-                {showAvatar ? (
-                    <AvatarImage src={user.avatar} alt={user.name} />
-                ) : null}
-                <AvatarFallback className="rounded-lg text-black dark:text-white">
+                <AvatarFallback className="rounded-lg bg-sidebar-primary font-medium text-sidebar-primary-foreground">
                     {getInitials(user.name)}
                 </AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
-                {showEmail ? (
-                    <span className="truncate text-xs text-muted-foreground">
-                        {user.email}
+                {subtitle ? (
+                    <span className="truncate text-xs opacity-70">
+                        {subtitle}
                     </span>
                 ) : null}
             </div>

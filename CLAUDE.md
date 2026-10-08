@@ -36,7 +36,7 @@ Backend selesai (Tahap 00–11). Fase ini membangun halaman React di
 `resources/js` sesuai `docs/08-kontrak-halaman.md`. Tahap ada di
 `prompts/F00-*.md` … `prompts/F09-*.md`.
 
-- Identitas: nama **dinoTrack**, warna utama biru tua laut (token `--primary`
+- Identitas: nama **DinoTrack**, warna utama biru tua laut (token `--primary`
   di `resources/css/app.css`; jangan memakai kode warna langsung di komponen).
 - Pengguna: admin dan kasir di laptop, teknisi lebih sering di HP. Halaman
   pelanggan wajib nyaman dipakai di HP.
@@ -46,9 +46,18 @@ Backend selesai (Tahap 00–11). Fase ini membangun halaman React di
 ### Aturan frontend
 
 1. **Komponen**: pakai komponen shadcn/ui yang sudah ada di
-   `resources/js/components/ui`. Komponen baru ditambah lewat CLI
-   (`npx shadcn@latest add <nama>`), tidak ditulis tangan. File di
-   `components/ui` tidak diubah kecuali untuk token tema. Komponen bersama
+   `resources/js/components/ui`. Komponen baru ditambah lewat CLI, tidak
+   ditulis tangan, dengan langkah berikut (registry shadcn kini menghasilkan
+   paket gabungan `radix-ui` + paket `cn`, dan CLI memakai pnpm karena ada
+   `pnpm-workspace.yaml`):
+   1. pasang dulu paket `@radix-ui/react-<nama>` dengan `npm install`;
+   2. jalankan `npx shadcn@latest add <nama>` dengan `pnpm-workspace.yaml`
+      dipindah sementara, dan jangan menimpa file yang sudah ada;
+   3. ubah import ke `@radix-ui/react-<nama>` dan `@/lib/utils`, lalu
+      `npm uninstall cn radix-ui` bila ikut terpasang.
+
+   `package-lock.json` adalah satu-satunya lockfile. Selain langkah 3, file
+   di `components/ui` tidak diubah kecuali untuk token tema. Komponen bersama
    aplikasi ada di `resources/js/components/` (lihat F00); cek dulu sebelum
    membuat yang baru.
 2. **Form**: memakai `useForm` Inertia (atau `<Form>`), dengan URL dari

@@ -25,6 +25,20 @@ it('menampilkan daftar paket dengan pencarian dan jumlah pemakai', function () {
             ->where('filters', ['search' => 'home']));
 });
 
+it('mengirim daftar berhalaman dengan bentuk data, links, dan meta untuk frontend', function () {
+    Package::factory()->count(3)->create();
+
+    $response = $this->actingAs(userWithRole(Role::Teknisi))->get(route('packages.index', ['per_page' => 10]));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->has('packages', fn (Assert $packages) => $packages
+            ->has('data', 3)
+            ->has('links', fn (Assert $links) => $links->hasAll(['first', 'last', 'prev', 'next']))
+            ->has('meta', fn (Assert $meta) => $meta
+                ->hasAll(['current_page', 'from', 'last_page', 'path', 'per_page', 'to', 'total'])
+                ->has('links.0', fn (Assert $link) => $link->hasAll(['url', 'label', 'page', 'active'])))));
+});
+
 it('admin menambah paket dengan harga integer', function () {
     $this->actingAs(userWithRole(Role::Admin))
         ->post(route('packages.store'), [

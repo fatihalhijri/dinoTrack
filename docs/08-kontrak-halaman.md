@@ -8,25 +8,35 @@ perbarui dokumen ini.
 
 ## Konvensi umum
 
-- **Uang**: integer rupiah (`150000`). Format tampilan di frontend (`Rp150.000`).
+- **Uang**: integer rupiah (`150000`). Format tampilan di frontend (`Rp150.000`)
+  lewat `formatRupiah()` di `resources/js/lib/format.ts`.
 - **Tanggal**: kolom `date` = `YYYY-MM-DD`; timestamp = ISO 8601 dengan zona
-  waktu (`2026-10-06T14:30:00+07:00`).
+  waktu (`2026-10-06T14:30:00+07:00`). Di frontend, `YYYY-MM-DD` **tidak boleh**
+  diparse dengan `new Date(str)` (dibaca UTC sehingga bisa bergeser hari); pakai
+  `parseDateOnly()`/`formatDate()`. Timestamp ditampilkan dalam zona Asia/Jakarta
+  (`formatDateTime()`).
 - **Enum**: dikirim sebagai `value` + `*_label` Bahasa Indonesia, misalnya
   `status: "isolated"`, `status_label: "Diisolir"`.
 - **Opsi dropdown**: `[{ value, label }]` untuk enum, `[{ id, name, ... }]` untuk data.
-- **Pagination** (semua halaman daftar): `{ data: T[], links: {...}, meta: { current_page, last_page, per_page, total, ... } }`
-  dari `Model::paginate()` + `withQueryString()`. Query string: `page`,
-  `per_page` (10/20/50/100, default 20), `search`, dan filter per halaman.
+- **Pagination** (semua halaman daftar): `Paginated<T>` dari `Model::paginate()` +
+  `withQueryString()` lewat `ResourceCollection` (bentuk diuji di
+  `PackageControllerTest`):
+  `{ data: T[], links: { first, last, prev, next }, meta: { current_page, from, last_page, links: { url, label, page, active }[], path, per_page, to, total } }`.
+  Query string: `page`, `per_page` (10/20/50/100, default 20), `search`, dan
+  filter per halaman.
 - **`filters`**: nilai filter yang sudah divalidasi (hanya yang dikirim), untuk
   mengisi ulang form filter.
 - **Validasi**: error Form Request dan penolakan aturan bisnis dari Action
   sama-sama datang sebagai `errors` Inertia (`errors.<field>`). Penolakan Action
   bisa memakai key yang bukan field form (`status`, `customer`, `package`,
-  `router`, `invoice`, `user`) dan perlu ditampilkan sebagai pesan umum.
-- **Flash**: `flash.toast = { type: 'success'|'info'|'warning'|'error', message }`
-  (sudah ditangani `use-flash-toast.ts`).
+  `router`, `invoice`, `user`, `role`) dan perlu ditampilkan sebagai pesan umum
+  (`FormErrorAlert`).
+- **Flash**: data flash Inertia (`Inertia::flash('toast', ...)`, bukan props):
+  `toast = { type: 'success'|'info'|'warning'|'error', message }`, ditangani
+  `use-flash-toast.ts`.
 - **Akses**: 403 jika permission kurang. Tombol disembunyikan memakai
-  `auth.permissions` (lihat props bersama); otorisasi tetap di backend.
+  `auth.permissions` (lihat props bersama dan bagian Permission); otorisasi tetap
+  di backend.
 - **Data sensitif yang tidak pernah dikirim**: password router, hash password
   user, rahasia/recovery code 2FA, `remember_token`, `payment_charges.raw_response`,
   payload `payment_notifications`.
@@ -35,48 +45,86 @@ perbarui dokumen ini.
 
 | Prop | Tipe | Keterangan |
 |---|---|---|
-| `name` | string | `APP_NAME` |
-| `auth.user` | User \| null | user login (kolom tersembunyi tidak ikut) |
-| `auth.permissions` | string[] | permission user; admin mendapat semuanya |
+| `name` | string | `APP_NAME` (DinoTrack) |
+| `auth.user` | AuthUser \| null | `{ id: number, name: string, email: string, role: Role \| null, role_label: string \| null, email_verified_at: string \| null, two_factor_enabled: boolean }`, dibentuk eksplisit di `HandleInertiaRequests` (bukan model mentah); `null` untuk tamu |
+| `auth.permissions` | Permission[] | permission user; admin mendapat semuanya |
 | `sidebarOpen` | boolean | |
-| `flash.toast` | object \| undefined | lihat konvensi |
+
+## Permission
+
+Nilai `auth.permissions` (enum `App\Enums\Permission`, tipe TS `Permission`).
+Admin selalu mendapat semuanya.
+
+| Permission | Admin | Kasir | Teknisi |
+|---|:-:|:-:|:-:|
+| `customers.view` | ✓ | ✓ | ✓ |
+| `customers.create` | ✓ | | ✓ |
+| `customers.update` | ✓ | | |
+| `customers.delete` | ✓ | | |
+| `customers.activate` | ✓ | ✓ | |
+| `customers.terminate` | ✓ | | |
+| `customers.isolate` | ✓ | | |
+| `packages.view` | ✓ | ✓ | ✓ |
+| `packages.manage` | ✓ | | |
+| `routers.manage` | ✓ | | |
+| `invoices.view` | ✓ | ✓ | |
+| `invoices.cancel` | ✓ | | |
+| `invoices.resend` | ✓ | ✓ | |
+| `payments.view` | ✓ | ✓ | |
+| `payments.record` | ✓ | ✓ | |
+| `payments.review` | ✓ | | |
+| `reports.view` | ✓ | | |
+| `settings.manage` | ✓ | | |
+| `users.manage` | ✓ | | |
 
 ## Bentuk resource
 
+Sumber kebenaran: `app/Http/Resources/*`. Salinan TypeScript ada di
+`resources/js/types/models.ts`; ubah keduanya bersamaan. Field bertanda `?`
+hanya ada jika relasinya dimuat di halaman tersebut.
+
 ```ts
-type Package = { id; name; speed_label; price; mikrotik_profile; is_active; description: string|null; subscriptions_count?: number }
-type Router = { id; name; host; port; username; use_ssl; isolation_profile; is_active; last_connected_at: string|null; customers_count?: number }
-type PackageSummary = { id; name; speed_label }
-type Subscription = { id; package?: PackageSummary; next_package?: PackageSummary|null; price; billing_day; starts_at: string|null; ends_at: string|null }
+type Role = 'admin' | 'kasir' | 'teknisi'
+type CustomerStatus = 'pending' | 'active' | 'isolated' | 'terminated'
+type InvoiceStatus = 'unpaid' | 'paid' | 'overdue' | 'cancelled'
+type PaymentMethod = 'qris' | 'cash' | 'transfer'
+type PaymentReviewStatus = 'none' | 'needs_review' | 'resolved'
+type PaymentChargeStatus = 'pending' | 'settled' | 'expired' | 'failed'
+type MessageStatus = 'queued' | 'sent' | 'failed'
+type MessageTemplateKey = 'invoice_issued' | 'reminder_before_due' | 'reminder_due' | 'isolated' | 'payment_received'
+
+type Package = { id: number; name: string; speed_label: string; price: number; mikrotik_profile: string; is_active: boolean; description: string | null; subscriptions_count?: number }
+type Router = { id: number; name: string; host: string; port: number; username: string; use_ssl: boolean; isolation_profile: string; is_active: boolean; last_connected_at: string | null; customers_count?: number }
+type PackageSummary = { id: number; name: string; speed_label: string }
+type Subscription = { id: number; package?: PackageSummary; next_package?: PackageSummary | null; price: number; billing_day: number; starts_at: string | null; ends_at: string | null }
 type Customer = {
-  id; code; name; phone; address; odp: string|null; latitude: string|null; longitude: string|null;
-  router?: { id; name }; pppoe_username; status; status_label;
-  isolation_reason: 'overdue'|'manual'|null; isolation_reason_label: string|null;
-  installed_at: string|null; isolated_at: string|null; terminated_at: string|null;
-  network_error_at: string|null; network_error: string|null; notes: string|null;
-  subscription?: Subscription|null; created_at
+  id: number; code: string; name: string; phone: string; address: string; odp: string | null;
+  latitude: string | null; longitude: string | null; router?: { id: number; name: string }; pppoe_username: string;
+  status: CustomerStatus; status_label: string; isolation_reason: 'overdue' | 'manual' | null; isolation_reason_label: string | null;
+  installed_at: string | null; isolated_at: string | null; terminated_at: string | null;
+  network_error_at: string | null; network_error: string | null; notes: string | null;
+  subscription?: Subscription | null; created_at: string | null
 }
-type InvoiceItem = { id; description; quantity; unit_price; amount }
-type PaymentCharge = { id; attempt; order_id; amount; status; status_label; expires_at: string|null; created_at }
+type InvoiceItem = { id: number; description: string; quantity: number; unit_price: number; amount: number }
+type PaymentCharge = { id: number; attempt: number; order_id: string; amount: number; status: PaymentChargeStatus; status_label: string; expires_at: string | null; created_at: string | null }
 type Payment = {
-  id; invoice?: { id; number; status; customer: { id; code; name }|null }; order_id?: string|null;
-  method: 'qris'|'cash'|'transfer'; method_label; amount; paid_at; reference: string|null;
-  received_by?: { id; name }|null; notes: string|null;
-  review_status: 'none'|'needs_review'|'resolved'; review_status_label; review_note: string|null; created_at
+  id: number; invoice?: { id: number; number: string; status: InvoiceStatus; customer: { id: number; code: string; name: string } | null };
+  order_id?: string | null; method: PaymentMethod; method_label: string; amount: number; paid_at: string; reference: string | null;
+  received_by?: { id: number; name: string } | null; notes: string | null;
+  review_status: PaymentReviewStatus; review_status_label: string; review_note: string | null; created_at: string | null
 }
 type Invoice = {
-  id; number; customer?: { id; code; name; status }; period_start; period_end; issued_at; due_at;
-  subtotal; discount; penalty; total; status; status_label; paid_at: string|null;
-  cancelled_at: string|null; cancelled_reason: string|null;
+  id: number; number: string; customer?: { id: number; code: string; name: string; status: CustomerStatus };
+  period_start: string; period_end: string; issued_at: string; due_at: string;
+  subtotal: number; discount: number; penalty: number; total: number; status: InvoiceStatus; status_label: string;
+  paid_at: string | null; cancelled_at: string | null; cancelled_reason: string | null;
   items?: InvoiceItem[]; payments?: Payment[]; payment_charges?: PaymentCharge[]
 }
-type MessageLog = { id; invoice_id: number|null; template_key: string|null; template_label: string|null; phone; body; status; status_label; error: string|null; sent_at: string|null; created_at }
-type ActivityLog = { id; action; user?: { id; name }|null; properties: object|null; created_at }
-type User = { id; name; email; role: 'admin'|'kasir'|'teknisi'|null; role_label: string|null; is_active; deactivated_at: string|null; created_at }
-type MessageTemplate = { id; key; label; body; is_active; updated_at }
+type MessageLog = { id: number; invoice_id: number | null; template_key: MessageTemplateKey | null; template_label: string | null; phone: string; body: string; status: MessageStatus; status_label: string; error: string | null; sent_at: string | null; created_at: string | null }
+type ActivityLog = { id: number; action: string; user?: { id: number; name: string } | null; properties: Record<string, unknown> | null; created_at: string | null }
+type User = { id: number; name: string; email: string; role: Role | null; role_label: string | null; is_active: boolean; deactivated_at: string | null; created_at: string | null }
+type MessageTemplate = { id: number; key: MessageTemplateKey; label: string; body: string; is_active: boolean; updated_at: string | null }
 ```
-
-Field bertanda `?` hanya ada jika relasinya dimuat di halaman tersebut.
 
 ## Halaman
 

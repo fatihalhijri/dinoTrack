@@ -2,7 +2,7 @@
 
 Status: ⬜ belum · 🟨 sedang dikerjakan · ✅ selesai
 
-Tahap berikutnya: **F00** (design system & layout). Backend selesai; fase frontend membangun halaman React sesuai `docs/08-kontrak-halaman.md` (prompt di `prompts/F00-*.md` … `prompts/F09-*.md`).
+Tahap berikutnya: **F01** (dashboard). Backend selesai; fase frontend membangun halaman React sesuai `docs/08-kontrak-halaman.md` (prompt di `prompts/F00-*.md` … `prompts/F09-*.md`).
 
 ## Fase backend
 
@@ -25,7 +25,7 @@ Tahap berikutnya: **F00** (design system & layout). Backend selesai; fase fronte
 
 | Tahap | Nama | Status | Tanggal | Catatan |
 |---|---|---|---|---|
-| F00 | Design system & layout | ⬜ | | |
+| F00 | Design system & layout | ✅ | 2026-10-08 | Tema navy terang/gelap, Inter, sidebar per permission, `auth.user` eksplisit, tipe dari API Resource, `lib/format.ts`, 10 komponen bersama + 7 komponen shadcn; Pint, PHPStan, 1117 test, `types:check`, lint, dan build hijau (`npm run check` masih gagal di format markdown/JSON, lihat utang teknis) |
 | F01 | Dashboard | ⬜ | | |
 | F02 | Paket & router | ⬜ | | |
 | F03 | Pelanggan: daftar & form | ⬜ | | |
@@ -160,6 +160,11 @@ Catat di sini setiap keputusan yang menyimpang dari `docs/` beserta alasannya.
 | 2026-10-07 | O4 Deploy di tempat dengan mode maintenance (±1–2 menit; webhook 503 ditutup retry Midtrans + rekonsiliasi), `optimize` sebelum `migrate`, reload PHP-FPM karena `opcache.validate_timestamps=0`; gagal = tetap maintenance. Default branch `master` | Sederhana untuk satu VPS; tanpa release symlink |
 | 2026-10-07 | O5 Nginx tanpa `trustProxies` (koneksi langsung, tanpa Cloudflare); `/webhooks/*` body 16 KB + `limit_req` 2 r/s per IP; halaman publik tanpa `limit_req` (S-3); query `/isolir` disamarkan dan referer tidak dicatat di access log (R-8); HSTS. `SESSION_DRIVER=database`, cache/queue Redis (`noeviction`, AOF) | Sisa risiko T-1, R-8, R-10 |
 | 2026-10-07 | O6 Backup `mysqldump --single-transaction` harian 03:30 dengan user baca-saja, simpan lokal 14 hari + offsite generik lewat `rclone` (`RCLONE_REMOTE`); `APP_KEY`/`.env` di-backup terpisah. CI dipindah ke `.github/workflows/backend.yml` di root repo (Pint, PHPStan, Pest + MySQL 8.4, setiap push/PR, tanpa `npm run check`); `backend/.github` dihapus dan dependabot dipindah ke root | `backend/.github` tidak pernah dibaca GitHub karena root repo adalah folder induk |
+| 2026-10-08 | F1 Nama ditulis **DinoTrack** (sesuai `APP_NAME` di `.env`/`.env.example`), bukan "dinoTrack" seperti brief awal; font Inter (angka tabular untuk kolom Rupiah); sidebar navy gelap varian `inset` | Keputusan pemilik di rencana F00 |
+| 2026-10-08 | F2 Komponen shadcn: registry kini menghasilkan paket gabungan `radix-ui` + paket `cn` dan CLI memakai pnpm (karena `pnpm-workspace.yaml`). Komponen tetap dibuat lewat CLI, lalu import diubah ke `@radix-ui/react-*` dan `@/lib/utils`; paket dipasang dengan npm, `package-lock.json` satu-satunya lockfile. Langkahnya di CLAUDE.md aturan frontend 1 | Konsisten dengan komponen starter kit; pin CLI 2.10.0 tidak membantu karena isi diambil dari registry online |
+| 2026-10-08 | F3 `auth.user` dibentuk eksplisit di `HandleInertiaRequests::userData()` (`id`, `name`, `email`, `role`, `role_label`, `email_verified_at`, `two_factor_enabled`), avatar dihapus (inisial saja). Toast diketik lewat `flashDataType` Inertia v3, bukan props bersama | Menutup G3 dan sebagian R-3; model mentah bisa ikut membawa relasi `roles` |
+| 2026-10-08 | F4 Token warna status semantik `success`/`warning`/`info` (+ `destructive`) di `app.css`; `StatusBadge` dan alert tidak memakai warna Tailwind langsung. Semua pasangan teks/latar dihitung ≥ 4.5:1 | Aturan frontend 1 (tanpa kode warna di komponen) |
+| 2026-10-08 | F5 Tanpa runner test JS: `lib/format.ts` diperiksa manual (16 kasus, dua zona waktu) + typecheck. `DataTable` tanpa TanStack Table (pengurutan/pagination di server); `Pagination` tidak memakai label backend yang berbahasa Inggris | Tidak menambah infrastruktur/paket di luar cakupan F00 |
 
 ## Utang teknis
 
@@ -168,7 +173,7 @@ Hal yang sengaja ditunda untuk dikerjakan nanti.
 - `IsolateOverdueCustomers` menghitung pelanggan yang di-dispatch, termasuk yang dilewati karena job unik masih antre; angka di output command bisa sedikit lebih besar dari job yang benar-benar masuk queue.
 - Uji manual ke Mikrotik CHR (tes koneksi, isolir, aktivasi, nonaktif secret) belum dilakukan; implementasi baru diuji dengan client palsu.
 - Test `TerminateCustomer` (Tahap 03) memakai `Queue::fake()` yang mengabaikan `afterCommit()`, sehingga belum membuktikan job tidak terkirim saat rollback; pola test dengan queue `sync` + `Queue::before()` ada di `ActivateNewCustomerTest`.
-- `npm run check` (vp) melaporkan format markdown di `docs/`, `prompts/`, `PROGRESS.md`, `MULAI-DI-SINI.md`, `pint.json` sejak sebelum Tahap 02; belum dirapikan.
+- `npm run check` (vp) gagal hanya karena format file non-kode (52 file: markdown di `docs/`, `prompts/`, `.claude/`, `AGENTS.md`, `CLAUDE.md`, `MULAI-DI-SINI.md`, `PROGRESS.md`, serta `pint.json`, `.mcp.json`, `.claude/settings.json`); kode TS/TSX/CSS bersih dan lint lolos. Dirapikan di F09 (opsi a saat menutup F00).
 - Status pengiriman akhir Fonnte (terkirim/gagal di sisi WhatsApp) hanya tersedia lewat webhook Fonnte; v1 menganggap `status: true` (masuk antrean Fonnte) sebagai `sent`.
 - Pesan ganda masih mungkin jika request ke Fonnte timeout setelah pesan diterima lalu job mencoba ulang (risiko diterima, lihat W6).
 - Uji manual ke Fonnte sungguhan dan tampilan halaman tagihan di HP (QR Midtrans sandbox, polling) belum dilakukan; implementasi baru diuji dengan fake.
@@ -184,7 +189,10 @@ Hal yang sengaja ditunda untuk dikerjakan nanti.
 - S-3 (audit): rate limit `/isolir` dan halaman tagihan per IP bisa dipakai bersama seluruh pelanggan di balik NAT ISP; perlu keputusan (allowlist IP NAT di `.env`, naikkan batas, atau terima).
 - S-4 (audit, sisa): `billing:health` sudah mencatat kegagalan ke log; indikator di dashboard admin (WA gagal, notifikasi pembayaran tertahan, `failed_jobs`) dan alert WA ke admin belum ada. Rekonsiliasi pembayaran yang gagal masih hanya di log.
 - Deploy (Tahap 11): konfigurasi `deploy/` dan `docs/10-deploy.md` belum diuji di VPS sungguhan; `shellcheck` tidak tersedia di mesin pengembang (hanya `bash -n`); workflow CI baru berjalan setelah di-push. Bit executable script tidak tercatat dari Windows, sehingga script dipanggil lewat `bash`.
-- R-3/R-5 (audit, fase frontend): `auth.user` dibentuk minimal; pertimbangkan 2FA wajib untuk admin; pasang CSP setelah skrip inline halaman publik dipindah.
+- R-3/R-5 (audit, fase frontend): `auth.user` sudah minimal (F00); sisa: pertimbangkan 2FA wajib untuk admin, pasang CSP setelah skrip inline halaman publik dipindah.
 - R-6/R-7 (audit): lock charge QRIS 60 s bisa habis pada panggilan gateway beruntun; panggilan router sinkron (status koneksi, tes koneksi) belum di-throttle.
 - R-11 (audit): `npm audit` dev melaporkan `tinypool` lewat `vite-plus` 0.3.0; naikkan ke ≥0.3.3 saat fase frontend.
 - Test yang belum ada (docs/09 butir 9): QRIS untuk invoice pelanggan `terminated`, limit `/isolir` dan halaman tagihan per IP, pengingat terlewat tidak dikirim belakangan, isolir ulang tanpa pesan kedua.
+- `public/favicon.ico` dan `public/apple-touch-icon.png` masih logo Laravel karena ImageMagick tidak tersedia; hanya `favicon.svg` yang sudah logo DinoTrack (F09).
+- Teks bahasa Inggris di halaman auth dan settings bawaan starter kit (login, profil, keamanan, tampilan) serta `sr-only` "Toggle sidebar" di `components/ui/sidebar.tsx` belum diterjemahkan (F09, sesuai keputusan F00).
+- `app-header.tsx` dan `layouts/app/app-header-layout.tsx` tidak dipakai (layout sidebar), hanya disesuaikan agar lolos typecheck; hapus di F09.
