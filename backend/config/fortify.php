@@ -162,8 +162,8 @@ return [
     |
     */
 
+    // Registrasi publik dimatikan: akun pegawai dibuat oleh admin.
     'features' => [
-        Features::registration(),
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::twoFactorAuthentication([

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\InvoiceStatus;
+use App\Services\Reports\ReportService;
+use App\Support\SearchTerm;
 use Carbon\CarbonImmutable;
 use Database\Factories\InvoiceFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -22,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $subscription_id
  * @property CarbonImmutable $period_start
  * @property CarbonImmutable $period_end
+ * @property CarbonImmutable|null $billed_period_start kolom generated: period_start jika tidak dibatalkan; jangan diisi aplikasi
  * @property CarbonImmutable $issued_at
  * @property CarbonImmutable $due_at
  * @property int $subtotal
@@ -53,6 +56,14 @@ class Invoice extends Model
         'discount' => 0,
         'penalty' => 0,
     ];
+
+    /**
+     * Ringkasan dashboard memuat pendapatan dan tunggakan, jadi cache-nya dihapus setiap ada perubahan.
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn () => app(ReportService::class)->forgetDashboardSummary());
+    }
 
     /**
      * @return BelongsTo<Customer, $this>
@@ -123,6 +134,61 @@ class Invoice extends Model
     }
 
     /**
+     * Tunggakan yang sudah lewat masa toleransi (`due_at + grace_days < hari ini`): dasar isolir
+     * otomatis, dan penghalang aktivasi otomatis setelah pembayaran.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function pastGracePeriod(Builder $query, CarbonImmutable $today, int $graceDays): void
+    {
+        $query->whereIn('status', InvoiceStatus::outstanding())
+            ->whereDate('due_at', '<', $today->subDays($graceDays)->toDateString());
+    }
+
+    /**
+     * Tunggakan untuk laporan: masih harus dibayar dan jatuh temponya sudah lewat (`due_at < hari
+     * ini`), termasuk yang belum sempat ditandai overdue oleh scheduler. Kolom dikualifikasi agar
+     * aman dipakai bersama join ke customers, dan due_at dibandingkan langsung agar index terpakai.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function pastDue(Builder $query, CarbonImmutable $today): void
+    {
+        $query->whereIn($query->qualifyColumn('status'), InvoiceStatus::outstanding())
+            ->where($query->qualifyColumn('due_at'), '<', $today->toDateString());
+    }
+
+    /**
+     * Filter halaman daftar tagihan. Periode `YYYY-MM` dicocokkan dengan bulan `period_start`.
+     *
+     * @param  Builder<self>  $query
+     * @param  array{search?: string|null, status?: InvoiceStatus|null, period?: string|null, customer_id?: int|null}  $filters
+     */
+    #[Scope]
+    protected function applyFilters(Builder $query, array $filters): void
+    {
+        $search = $filters['search'] ?? null;
+        $status = $filters['status'] ?? null;
+        $period = $filters['period'] ?? null;
+        $customerId = $filters['customer_id'] ?? null;
+
+        $query
+            ->when($search !== null, fn (Builder $query) => $query->where(function (Builder $query) use ($search): void {
+                $pattern = SearchTerm::contains((string) $search);
+                $query->where('number', 'like', $pattern)
+                    ->orWhereHas('customer', fn (Builder $query) => $query->where('code', 'like', $pattern)->orWhere('name', 'like', $pattern));
+            }))
+            ->when($status !== null, fn (Builder $query) => $query->where('status', $status))
+            ->when($period !== null, function (Builder $query) use ($period): void {
+                $month = CarbonImmutable::parse($period.'-01');
+                $query->whereBetween('period_start', [$month->startOfMonth()->toDateString(), $month->endOfMonth()->toDateString()]);
+            })
+            ->when($customerId !== null, fn (Builder $query) => $query->where('customer_id', $customerId));
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -130,6 +196,7 @@ class Invoice extends Model
         return [
             'period_start' => 'date:Y-m-d',
             'period_end' => 'date:Y-m-d',
+            'billed_period_start' => 'date:Y-m-d',
             'issued_at' => 'date:Y-m-d',
             'due_at' => 'date:Y-m-d',
             'subtotal' => 'integer',

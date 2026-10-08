@@ -37,15 +37,30 @@ return [
         'base_url' => env('MIDTRANS_IS_PRODUCTION', false)
             ? 'https://api.midtrans.com'
             : 'https://api.sandbox.midtrans.com',
+        'connect_timeout' => 5,
+        'timeout' => 15,
+        // Dikirim sebagai custom_expiry karena respons charge QRIS tidak mendokumentasikan expiry_time.
+        'qris_expiry_minutes' => 15,
     ],
 
+    // Kredensial router disimpan per router di database (terenkripsi), bukan di .env.
+    'mikrotik' => [
+        'connect_timeout' => 5,
+        'socket_timeout' => 10,
+    ],
+
+    // Driver: `fonnte`, atau `log` untuk development (pesan hanya ditulis ke log).
     'whatsapp' => [
         'driver' => env('WHATSAPP_DRIVER', 'fonnte'),
+        // Jeda minimal antarpesan agar nomor pengirim tidak diblokir; 0 mematikan pembatasan.
+        'seconds_per_message' => (int) env('WHATSAPP_SECONDS_PER_MESSAGE', 5),
     ],
 
     'fonnte' => [
         'token' => env('FONNTE_TOKEN'),
         'base_url' => 'https://api.fonnte.com',
+        'connect_timeout' => 5,
+        'timeout' => 15,
     ],
 
     'slack' => [

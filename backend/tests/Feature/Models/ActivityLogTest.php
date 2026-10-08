@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\ActivityLog;
 use App\Models\Customer;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 it('menyimpan subject dengan alias morph, bukan nama kelas', function () {
     $customer = Customer::factory()->create();
@@ -22,4 +23,8 @@ it('mengizinkan log aksi sistem tanpa user dan tanpa subject', function () {
     expect($log->fresh()->user)->toBeNull()
         ->and($log->fresh()->subject)->toBeNull()
         ->and($log->fresh()->properties)->toBe(['key' => 'billing.grace_days']);
+});
+
+it('punya index aksi dan waktu untuk laporan pergerakan pelanggan', function () {
+    expect(Schema::hasIndex('activity_logs', ['action', 'created_at']))->toBeTrue();
 });

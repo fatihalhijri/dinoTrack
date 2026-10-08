@@ -24,11 +24,51 @@ diaktifkan otomatis sesuai status pembayaran.
 | **kasir** | Lihat pelanggan dan tagihan, tandai pelanggan baru "terpasang" (aktivasi), catat pembayaran manual, kirim ulang tagihan |
 | **teknisi** | Lihat data pelanggan dan status koneksi, tambah pelanggan baru (status `pending`). Tidak bisa mengaktifkan pelanggan |
 
+### Matriks permission (disetujui 2026-10-05)
+
+Sumber tunggal di kode: `App\Enums\Role::permissions()`, disinkronkan ke
+database oleh `RolePermissionSeeder` (perubahan manual di database ditimpa saat
+seeder dijalankan ulang). Admin juga melewati semua pengecekan lewat
+`Gate::before`.
+
+| Permission | Arti | admin | kasir | teknisi |
+|---|---|:-:|:-:|:-:|
+| `customers.view` | Lihat pelanggan, riwayat, status koneksi | ✅ | ✅ | ✅ |
+| `customers.create` | Tambah pelanggan (`pending`) | ✅ | – | ✅ |
+| `customers.update` | Ubah data pelanggan | ✅ | – | – |
+| `customers.delete` | Soft delete karena salah input | ✅ | – | – |
+| `customers.activate` | Tandai "terpasang" (`pending → active`) | ✅ | ✅ | – |
+| `customers.terminate` | Berhentikan dan aktifkan kembali (`terminated → pending`) | ✅ | – | – |
+| `customers.isolate` | Isolir / buka isolir manual | ✅ | – | – |
+| `packages.view` | Lihat paket | ✅ | ✅ | ✅ |
+| `packages.manage` | CRUD dan nonaktifkan paket | ✅ | – | – |
+| `routers.manage` | CRUD router dan tes koneksi | ✅ | – | – |
+| `invoices.view` | Lihat tagihan | ✅ | ✅ | – |
+| `invoices.cancel` | Batalkan tagihan (dengan alasan) | ✅ | – | – |
+| `invoices.resend` | Kirim ulang tagihan via WA | ✅ | ✅ | – |
+| `payments.view` | Lihat pembayaran | ✅ | ✅ | – |
+| `payments.record` | Catat pembayaran manual | ✅ | ✅ | – |
+| `payments.review` | Tinjau pembayaran anomali (`resolved`) | ✅ | – | – |
+| `reports.view` | Laporan dan dashboard pendapatan | ✅ | – | – |
+| `settings.manage` | Pengaturan usaha, aturan tagihan, template WA | ✅ | – | – |
+| `users.manage` | Manajemen user dan role | ✅ | – | – |
+
+Policy hanya mengecek permission. Syarat status data (misalnya invoice `paid`
+tidak bisa dibatalkan, paket yang dipakai tidak bisa dihapus) dijaga di Action
+agar tetap berlaku untuk admin.
+
 ## Modul dan fitur
 
 ### 1. Autentikasi & pengguna
 - Login, logout, lupa password (dari starter kit)
-- Manajemen user dan role (admin saja)
+- Tidak ada registrasi publik dan tidak ada hapus akun sendiri; akun pegawai
+  dibuat dan dikelola admin
+- Manajemen user dan role (admin saja): admin mengisi password awal (email
+  langsung terverifikasi). Pegawai yang keluar **dinonaktifkan** (tidak bisa
+  masuk, session yang berjalan diputus) agar jejak auditnya utuh; hapus hanya
+  untuk akun yang belum punya jejak aktivitas. Admin tidak bisa mengubah role,
+  menonaktifkan, atau menghapus akunnya sendiri, dan admin aktif terakhir
+  dilindungi (keputusan 2026-10-06)
 
 ### 2. Paket internet
 - CRUD paket: nama, kecepatan (contoh "20 Mbps"), harga bulanan, nama profil PPPoE di Mikrotik
@@ -85,8 +125,11 @@ diaktifkan otomatis sesuai status pembayaran.
 - Pelanggan baru, berhenti, terisolir
 - Ekspor CSV
 
+- Dashboard: ringkasan keuangan hanya untuk `reports.view`; kasir dan teknisi
+  melihat jumlah pelanggan per status dan pelanggan dengan galat router
+
 ### 12. Pengaturan
-- Profil usaha (nama, alamat, logo, nomor WA admin)
+- Profil usaha (nama, alamat, logo, nomor WA admin); logo menyusul di fase frontend
 - Aturan tagihan (lihat `docs/04-aturan-bisnis.md`)
 - Template pesan WhatsApp
 

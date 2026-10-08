@@ -57,6 +57,14 @@ class PaymentCharge extends Model
     }
 
     /**
+     * Charge tanpa QR adalah percobaan yang belum (atau tidak pernah) mendapat jawaban gateway.
+     */
+    public function hasQr(): bool
+    {
+        return $this->qr_url !== null || $this->qr_string !== null;
+    }
+
+    /**
      * @param  Builder<self>  $query
      */
     #[Scope]

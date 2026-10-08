@@ -43,6 +43,13 @@ class PaymentChargeFactory extends Factory
         ]);
     }
 
+    public function failed(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => PaymentChargeStatus::Failed,
+        ]);
+    }
+
     public function expired(): static
     {
         return $this->state(fn (array $attributes) => [

@@ -18,6 +18,25 @@ it('menolak tagihan ganda untuk subscription dan periode yang sama', function ()
     Invoice::factory()->for($subscription)->create(['period_start' => '2026-10-05']);
 })->throws(UniqueConstraintViolationException::class);
 
+it('mengizinkan periode yang invoice-nya dibatalkan ditagih lagi, tetapi hanya satu invoice aktif', function () {
+    $subscription = Subscription::factory()->create();
+    Invoice::factory()->for($subscription)->create(['period_start' => '2026-10-05', 'status' => InvoiceStatus::Cancelled]);
+    Invoice::factory()->for($subscription)->create(['period_start' => '2026-10-05', 'status' => InvoiceStatus::Unpaid]);
+
+    expect($subscription->invoices()->count())->toBe(2);
+
+    Invoice::factory()->for($subscription)->create(['period_start' => '2026-10-05', 'status' => InvoiceStatus::Paid]);
+})->throws(UniqueConstraintViolationException::class);
+
+it('mengosongkan billed_period_start saat invoice dibatalkan', function () {
+    $invoice = Invoice::factory()->create(['period_start' => '2026-10-05']);
+    expect($invoice->fresh()->billed_period_start?->toDateString())->toBe('2026-10-05');
+
+    $invoice->update(['status' => InvoiceStatus::Cancelled]);
+
+    expect($invoice->fresh()->billed_period_start)->toBeNull();
+});
+
 it('mengizinkan tagihan periode berbeda untuk subscription yang sama', function () {
     $subscription = Subscription::factory()->create();
     Invoice::factory()->for($subscription)->create(['period_start' => '2026-09-05']);
