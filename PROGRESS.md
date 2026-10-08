@@ -1,8 +1,10 @@
-# Progress Pengembangan Backend
+# Progress Pengembangan
 
 Status: ⬜ belum · 🟨 sedang dikerjakan · ✅ selesai
 
-Tahap berikutnya: **fase frontend** (halaman React sesuai `docs/08-kontrak-halaman.md`). Backend selesai.
+Tahap berikutnya: **F00** (design system & layout). Backend selesai; fase frontend membangun halaman React sesuai `docs/08-kontrak-halaman.md` (prompt di `prompts/F00-*.md` … `prompts/F09-*.md`).
+
+## Fase backend
 
 | Tahap | Nama | Status | Tanggal | Catatan |
 |---|---|---|---|---|
@@ -18,6 +20,21 @@ Tahap berikutnya: **fase frontend** (halaman React sesuai `docs/08-kontrak-halam
 | 09 | Controller & route | ✅ | 2026-10-06 | 15 controller tipis + 12 API Resource tanpa field sensitif, route admin per modul dengan permission + Policy, filter/pencarian/pagination, user nonaktif, pengaturan usaha/tagihan/template, kirim ulang tagihan, tinjau anomali, kontrak halaman `docs/08`; Pint, PHPStan, 1059 test hijau |
 | 10 | Review keamanan | ✅ | 2026-10-06 | Audit `docs/09` tanpa temuan Kritis; webhook dibatasi ukuran dan `status_code`, `retry_after` > timeout job, prune terjadwal, header keamanan, alamat router disembunyikan, advisory npm produksi bersih; Pint, PHPStan, 1074 test hijau |
 | 11 | Kesiapan deploy | ✅ | 2026-10-07 | Queue dipisah `default`/`network`/`notifications`, `billing:health` + `/up` memeriksa database/Redis/antrean/pembayaran tertahan, konfigurasi `deploy/` (Nginx, PHP-FPM, Supervisor, cron, deploy dan backup) dengan panduan `docs/10`, CI di root repo; Pint, PHPStan, 1110 test hijau |
+
+## Fase frontend
+
+| Tahap | Nama | Status | Tanggal | Catatan |
+|---|---|---|---|---|
+| F00 | Design system & layout | ⬜ | | |
+| F01 | Dashboard | ⬜ | | |
+| F02 | Paket & router | ⬜ | | |
+| F03 | Pelanggan: daftar & form | ⬜ | | |
+| F04 | Pelanggan: detail & aksi | ⬜ | | |
+| F05 | Tagihan | ⬜ | | |
+| F06 | Pembayaran | ⬜ | | |
+| F07 | Laporan | ⬜ | | |
+| F08 | Pengguna & pengaturan | ⬜ | | |
+| F09 | Poles akhir | ⬜ | | |
 
 ## Keputusan penting
 
