@@ -2,7 +2,7 @@
 
 Status: ⬜ belum · 🟨 sedang dikerjakan · ✅ selesai
 
-Tahap berikutnya: **F01** (dashboard). Backend selesai; fase frontend membangun halaman React sesuai `docs/08-kontrak-halaman.md` (prompt di `prompts/F00-*.md` … `prompts/F09-*.md`).
+Tahap berikutnya: **F02** (paket & router). Backend selesai; fase frontend membangun halaman React sesuai `docs/08-kontrak-halaman.md` (prompt di `prompts/F00-*.md` … `prompts/F09-*.md`).
 
 ## Fase backend
 
@@ -26,7 +26,7 @@ Tahap berikutnya: **F01** (dashboard). Backend selesai; fase frontend membangun 
 | Tahap | Nama | Status | Tanggal | Catatan |
 |---|---|---|---|---|
 | F00 | Design system & layout | ✅ | 2026-10-08 | Tema navy terang/gelap, Inter, sidebar per permission, `auth.user` eksplisit, tipe dari API Resource, `lib/format.ts`, 10 komponen bersama + 7 komponen shadcn; Pint, PHPStan, 1117 test, `types:check`, lint, dan build hijau (`npm run check` masih gagal di format markdown/JSON, lihat utang teknis) |
-| F01 | Dashboard | ⬜ | | |
+| F01 | Dashboard | ✅ | 2026-10-08 | Dashboard per role (perlu perhatian, keuangan dengan waktu cache, pelanggan per status bertautan filter) dengan tipe `DashboardSummary`/`CustomerCounts` dan test bentuk props; Pint, PHPStan, 1117 test, `types:check`, dan build hijau (`npm run check` masih gagal di format markdown/JSON yang sama) |
 | F02 | Paket & router | ⬜ | | |
 | F03 | Pelanggan: daftar & form | ⬜ | | |
 | F04 | Pelanggan: detail & aksi | ⬜ | | |
@@ -164,6 +164,7 @@ Catat di sini setiap keputusan yang menyimpang dari `docs/` beserta alasannya.
 | 2026-10-08 | F2 Komponen shadcn: registry kini menghasilkan paket gabungan `radix-ui` + paket `cn` dan CLI memakai pnpm (karena `pnpm-workspace.yaml`). Komponen tetap dibuat lewat CLI, lalu import diubah ke `@radix-ui/react-*` dan `@/lib/utils`; paket dipasang dengan npm, `package-lock.json` satu-satunya lockfile. Langkahnya di CLAUDE.md aturan frontend 1 | Konsisten dengan komponen starter kit; pin CLI 2.10.0 tidak membantu karena isi diambil dari registry online |
 | 2026-10-08 | F3 `auth.user` dibentuk eksplisit di `HandleInertiaRequests::userData()` (`id`, `name`, `email`, `role`, `role_label`, `email_verified_at`, `two_factor_enabled`), avatar dihapus (inisial saja). Toast diketik lewat `flashDataType` Inertia v3, bukan props bersama | Menutup G3 dan sebagian R-3; model mentah bisa ikut membawa relasi `roles` |
 | 2026-10-08 | F4 Token warna status semantik `success`/`warning`/`info` (+ `destructive`) di `app.css`; `StatusBadge` dan alert tidak memakai warna Tailwind langsung. Semua pasangan teks/latar dihitung ≥ 4.5:1 | Aturan frontend 1 (tanpa kode warna di komponen) |
+| 2026-10-08 | F6 Dashboard: bagian Pelanggan memakai `customer_counts` real-time untuk semua role (`summary.*_customers` tetap di kontrak tetapi tidak ditampilkan) dan menampilkan 4 status termasuk Berhenti; galat router dari `customer_counts` sehingga kasir/teknisi juga melihatnya; kartu "Jatuh tempo 7 hari" tanpa tautan; grid Keuangan 1/2/3 dan Pelanggan 2/2/4 (prompt menyebut 1/2/4) | Opsi Q1-a/Q2-a/Q3-a rencana F01: angka tidak tertinggal cache 5 menit; belum ada filter jatuh tempo di `/invoices`; 3 kartu keuangan tidak menyisakan slot kosong dan angka pelanggan pendek muat 2 kolom di 360 px |
 | 2026-10-08 | F5 Tanpa runner test JS: `lib/format.ts` diperiksa manual (16 kasus, dua zona waktu) + typecheck. `DataTable` tanpa TanStack Table (pengurutan/pagination di server); `Pagination` tidak memakai label backend yang berbahasa Inggris | Tidak menambah infrastruktur/paket di luar cakupan F00 |
 
 ## Utang teknis
@@ -195,4 +196,6 @@ Hal yang sengaja ditunda untuk dikerjakan nanti.
 - Test yang belum ada (docs/09 butir 9): QRIS untuk invoice pelanggan `terminated`, limit `/isolir` dan halaman tagihan per IP, pengingat terlewat tidak dikirim belakangan, isolir ulang tanpa pesan kedua.
 - `public/favicon.ico` dan `public/apple-touch-icon.png` masih logo Laravel karena ImageMagick tidak tersedia; hanya `favicon.svg` yang sudah logo DinoTrack (F09).
 - Teks bahasa Inggris di halaman auth dan settings bawaan starter kit (login, profil, keamanan, tampilan) serta `sr-only` "Toggle sidebar" di `components/ui/sidebar.tsx` belum diterjemahkan (F09, sesuai keputusan F00).
+- Filter jatuh tempo (misalnya `due_within=7`) di `/invoices` belum ada; tambahkan di F05 lalu tautkan kartu "Jatuh tempo 7 hari" di dashboard.
+- Tautan kartu dashboard menuju halaman yang baru dibuat di F03 (pelanggan), F06 (pembayaran), dan F07 (laporan); sebelum itu tautan membuka halaman yang belum ada. Tampilan dashboard di 360 px belum diperiksa di browser.
 - `app-header.tsx` dan `layouts/app/app-header-layout.tsx` tidak dipakai (layout sidebar), hanya disesuaikan agar lolos typecheck; hapus di F09.

@@ -211,3 +211,25 @@ export type MessageTemplate = {
     is_active: boolean;
     updated_at: string | null;
 };
+
+/** `App\Data\Reports\DashboardSummary::toArray()`, di-cache 5 menit (`generated_at`). */
+export type DashboardSummary = {
+    revenue_this_month: number;
+    payments_this_month: number;
+    outstanding_amount: number;
+    outstanding_invoices: number;
+    active_customers: number;
+    isolated_customers: number;
+    pending_customers: number;
+    due_this_week_amount: number;
+    due_this_week_invoices: number;
+    payments_needing_review: number;
+    payments_needing_review_amount: number;
+    customers_with_network_error: number;
+    generated_at: string;
+};
+
+/** Jumlah pelanggan per status (real-time) + pelanggan dengan galat router. */
+export type CustomerCounts = Record<CustomerStatus, number> & {
+    network_error: number;
+};
