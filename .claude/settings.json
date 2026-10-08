@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan test:*)",
+      "Bash(php artisan make:*)",
+      "Bash(php artisan migrate:*)",
+      "Bash(php artisan db:seed:*)",
+      "Bash(php artisan route:list:*)",
+      "Bash(php artisan schedule:list:*)",
+      "Bash(php artisan about:*)",
+      "Bash(composer test:*)",
+      "Bash(composer lint:*)",
+      "Bash(composer analyse:*)",
+      "Bash(./vendor/bin/pint:*)",
+      "Bash(./vendor/bin/phpstan:*)",
+      "Bash(./vendor/bin/pest:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(npm run build:*)"
+    ],
+    "ask": [
+      "Bash(composer require:*)",
+      "Bash(composer remove:*)",
+      "Bash(npm install:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
