@@ -3,6 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import type { DataTableColumn } from '@/components/data-table';
 import DataTable from '@/components/data-table';
 import EmptyState from '@/components/empty-state';
+import MessageLogList from '@/components/message-log-list';
 import Money from '@/components/money';
 import StatusBadge from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
@@ -172,55 +173,6 @@ function PaymentCard(payment: Payment) {
     );
 }
 
-function MessageList({ messages }: { messages: MessageLog[] }) {
-    if (messages.length === 0) {
-        return (
-            <div className="rounded-xl border bg-card">
-                <EmptyState title="Belum ada pesan WhatsApp" />
-            </div>
-        );
-    }
-
-    return (
-        <ul className="flex flex-col gap-3">
-            {messages.map((message) => (
-                <li
-                    key={message.id}
-                    className="grid gap-2 rounded-xl border bg-card p-4 text-sm"
-                >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div className="min-w-0">
-                            <p className="font-medium">
-                                {message.template_label ?? 'Pesan'}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                                {formatDateTime(
-                                    message.sent_at ?? message.created_at,
-                                )}
-                            </p>
-                        </div>
-                        <StatusBadge
-                            kind="message"
-                            value={message.status}
-                            label={message.status_label}
-                        />
-                    </div>
-                    <details className="group">
-                        <summary className="line-clamp-2 cursor-pointer list-none whitespace-pre-line text-muted-foreground group-open:line-clamp-none">
-                            {message.body}
-                        </summary>
-                    </details>
-                    {message.error ? (
-                        <p className="text-xs text-destructive">
-                            {message.error}
-                        </p>
-                    ) : null}
-                </li>
-            ))}
-        </ul>
-    );
-}
-
 /** Keterangan dari properti log yang aman dan berguna ditampilkan (alasan, galat router). */
 function activityNote(activity: ActivityLog): string | null {
     const note = activity.properties?.reason ?? activity.properties?.error;
@@ -343,7 +295,7 @@ export default function CustomerHistoryTabs({
 
             {messages !== null ? (
                 <TabsContent value="messages">
-                    <MessageList messages={messages} />
+                    <MessageLogList messages={messages} />
                 </TabsContent>
             ) : null}
 

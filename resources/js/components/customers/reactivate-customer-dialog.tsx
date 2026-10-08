@@ -1,8 +1,8 @@
 import { useForm } from '@inertiajs/react';
-import ActionFormDialog from '@/components/customers/action-form-dialog';
-import PackageSelect from '@/components/customers/package-select';
+import ActionFormDialog from '@/components/action-form-dialog';
 import FormErrorAlert from '@/components/form-error-alert';
 import InputError from '@/components/input-error';
+import PackageSelect from '@/components/package-select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { reactivate } from '@/routes/customers';

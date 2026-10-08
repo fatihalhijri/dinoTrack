@@ -9,7 +9,9 @@ use App\Jobs\SendWhatsAppMessage;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\MessageTemplate;
+use App\Models\Package;
 use App\Models\PaymentCharge;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -26,7 +28,7 @@ it('memfilter daftar tagihan menurut status, periode, dan pelanggan', function (
         ->get(route('invoices.index', $query($customer)))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('invoices/index')
+            ->component('invoices/index', true)
             ->has('invoices.data', 1)
             ->where('invoices.data.0.number', $expectedNumber)
             ->where('invoices.data.0.customer.id', fn (int $id): bool => $id > 0)
@@ -37,6 +39,44 @@ it('memfilter daftar tagihan menurut status, periode, dan pelanggan', function (
     'pelanggan dan nomor' => [fn (Customer $customer) => ['customer_id' => $customer->id, 'search' => '2026/09'], 'INV/2026/09/00001'],
 ]);
 
+it('mengirim pelanggan yang dipilih untuk chip filter daftar tagihan', function (Closure $customerId, Closure $expected) {
+    $customer = customerOnProfile(Customer::factory()->active()->state(['code' => 'PLG-000042', 'name' => 'Budi Santoso']));
+
+    $this->actingAs(userWithRole(Role::Kasir))
+        ->get(route('invoices.index', array_filter(['customer_id' => $customerId($customer)])))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('invoices/index', true)
+            ->where('customer', $expected($customer)));
+})->with([
+    'tanpa filter pelanggan' => [fn () => null, fn () => null],
+    'pelanggan ada' => [fn (Customer $customer) => $customer->id, fn (Customer $customer) => ['id' => $customer->id, 'code' => 'PLG-000042', 'name' => 'Budi Santoso']],
+    'pelanggan tidak ada' => [fn (Customer $customer) => $customer->id + 1000, fn () => null],
+]);
+
+it('memfilter tagihan yang jatuh tempo hari ini sampai H+6 dan belum dibayar', function () {
+    $customer = customerOnProfile(Customer::factory()->active());
+    $dueToday = invoiceDueAt($customer, '2026-10-20', InvoiceStatus::Unpaid);
+    $dueLastDay = invoiceDueAt($customer, '2026-10-26', InvoiceStatus::Unpaid);
+    invoiceDueAt($customer, '2026-10-27', InvoiceStatus::Unpaid);
+    invoiceDueAt($customer, '2026-10-19');
+    invoiceDueAt($customer, '2026-10-22', InvoiceStatus::Paid);
+    invoiceDueAt($customer, '2026-10-23', InvoiceStatus::Cancelled);
+
+    $this->actingAs(userWithRole(Role::Kasir))
+        ->get(route('invoices.index', ['due' => 'this_week']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('invoices.data', fn ($invoices): bool => collect($invoices)->pluck('id')->sort()->values()->all() === [$dueToday->id, $dueLastDay->id])
+            ->where('filters.due', 'this_week'));
+});
+
+it('menolak nilai filter jatuh tempo yang tidak dikenal', function () {
+    $this->actingAs(userWithRole(Role::Kasir))
+        ->get(route('invoices.index', ['due' => 'next_month']))
+        ->assertSessionHasErrors('due');
+});
+
 it('menampilkan detail tagihan dengan link bayar tanpa respons mentah gateway', function () {
     $invoice = invoiceDueAt(customerOnProfile(Customer::factory()->active()), '2026-10-12', InvoiceStatus::Unpaid);
     PaymentCharge::factory()->for($invoice)->create(['raw_response' => ['token' => 'rahasia-gateway']]);
@@ -45,7 +85,7 @@ it('menampilkan detail tagihan dengan link bayar tanpa respons mentah gateway', 
 
     $response->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('invoices/show')
+            ->component('invoices/show', true)
             ->where('invoice.number', $invoice->number)
             ->has('invoice.payment_charges', 1, fn (Assert $charge) => $charge->missing('raw_response')->etc())
             ->where('payment_link', fn (string $link): bool => str_contains($link, '/tagihan/'.$invoice->id) && str_contains($link, 'signature='))
@@ -53,12 +93,40 @@ it('menampilkan detail tagihan dengan link bayar tanpa respons mentah gateway', 
     expect($response->getContent())->not->toContain('rahasia-gateway');
 });
 
-it('memberi admin daftar paket koreksi untuk terbit ulang', function () {
+it('memberi admin daftar paket aktif untuk koreksi terbit ulang', function () {
     $invoice = invoiceDueAt(customerOnProfile(Customer::factory()->active()), '2026-10-12', InvoiceStatus::Cancelled);
+    Package::factory()->create(['is_active' => false]);
 
     $this->actingAs(userWithRole(Role::Admin))
         ->get(route('invoices.show', $invoice))
-        ->assertInertia(fn (Assert $page) => $page->has('packages', 1));
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('invoices/show', true)
+            ->has('packages', 1, fn (Assert $package) => $package->hasAll(['id', 'name', 'speed_label', 'price'])));
+});
+
+it('menunjukkan tagihan pengganti pada tagihan yang sudah diterbitkan ulang', function () {
+    $cancelled = invoiceDueAt(customerOnProfile(Customer::factory()->active()), '2026-10-25', InvoiceStatus::Cancelled);
+    $admin = userWithRole(Role::Admin);
+
+    $this->actingAs($admin)->get(route('invoices.show', $cancelled))
+        ->assertInertia(fn (Assert $page) => $page->where('replacement', null));
+
+    $this->actingAs($admin)->post(route('invoices.reissue', $cancelled));
+    $replacement = Invoice::query()->whereKeyNot($cancelled->id)->sole();
+
+    $this->actingAs($admin)->get(route('invoices.show', $cancelled))
+        ->assertInertia(fn (Assert $page) => $page->where('replacement', ['id' => $replacement->id, 'number' => $replacement->number]));
+    $this->actingAs($admin)->get(route('invoices.show', $replacement))
+        ->assertInertia(fn (Assert $page) => $page->where('replacement', null));
+});
+
+it('mengirim identitas usaha untuk tampilan cetak', function () {
+    Setting::query()->create(['key' => 'business.name', 'value' => 'Dino Net']);
+    $invoice = invoiceDueAt(customerOnProfile(Customer::factory()->active()), '2026-10-25', InvoiceStatus::Unpaid);
+
+    $this->actingAs(userWithRole(Role::Kasir))
+        ->get(route('invoices.show', $invoice))
+        ->assertInertia(fn (Assert $page) => $page->where('business', ['name' => 'Dino Net', 'address' => null, 'whatsapp' => null]));
 });
 
 it('admin membatalkan tagihan dengan alasan', function () {

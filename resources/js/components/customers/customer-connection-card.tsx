@@ -1,5 +1,5 @@
 import { Deferred } from '@inertiajs/react';
-import { DetailRow } from '@/components/customers/customer-profile-card';
+import DetailRow from '@/components/detail-row';
 import Money from '@/components/money';
 import type { StatusTone } from '@/components/status-badge';
 import { toneClasses } from '@/components/status-badge';

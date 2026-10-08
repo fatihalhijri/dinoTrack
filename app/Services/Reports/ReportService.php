@@ -9,7 +9,6 @@ use App\Data\Reports\CustomerMovement;
 use App\Data\Reports\DashboardSummary;
 use App\Data\Reports\MonthlyRevenue;
 use App\Enums\CustomerStatus;
-use App\Enums\InvoiceStatus;
 use App\Enums\OutstandingAgeBucket;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentReviewStatus;
@@ -216,8 +215,7 @@ final class ReportService
             ->first();
 
         $dueSoon = Invoice::query()
-            ->whereIn('status', InvoiceStatus::outstanding())
-            ->whereBetween('due_at', [$today->toDateString(), $today->addDays(self::DUE_SOON_DAYS - 1)->toDateString()])
+            ->dueSoon($today)
             ->toBase()
             ->selectRaw('COALESCE(SUM(total), 0) as amount, COUNT(*) as invoice_count')
             ->first();

@@ -161,10 +161,23 @@ class Invoice extends Model
     }
 
     /**
+     * "Jatuh tempo minggu ini" (docs/04 "Laporan"): masih harus dibayar dengan `due_at` hari ini
+     * sampai H+6, bukan minggu kalender. Dipakai ringkasan dashboard dan filter daftar tagihan.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function dueSoon(Builder $query, CarbonImmutable $today): void
+    {
+        $query->whereIn('status', InvoiceStatus::outstanding())
+            ->whereBetween('due_at', [$today->toDateString(), $today->addDays(ReportService::DUE_SOON_DAYS - 1)->toDateString()]);
+    }
+
+    /**
      * Filter halaman daftar tagihan. Periode `YYYY-MM` dicocokkan dengan bulan `period_start`.
      *
      * @param  Builder<self>  $query
-     * @param  array{search?: string|null, status?: InvoiceStatus|null, period?: string|null, customer_id?: int|null}  $filters
+     * @param  array{search?: string|null, status?: InvoiceStatus|null, period?: string|null, customer_id?: int|null, due_soon?: bool}  $filters
      */
     #[Scope]
     protected function applyFilters(Builder $query, array $filters): void
@@ -173,6 +186,7 @@ class Invoice extends Model
         $status = $filters['status'] ?? null;
         $period = $filters['period'] ?? null;
         $customerId = $filters['customer_id'] ?? null;
+        $dueSoon = $filters['due_soon'] ?? false;
 
         $query
             ->when($search !== null, fn (Builder $query) => $query->where(function (Builder $query) use ($search): void {
@@ -185,7 +199,8 @@ class Invoice extends Model
                 $month = CarbonImmutable::parse($period.'-01');
                 $query->whereBetween('period_start', [$month->startOfMonth()->toDateString(), $month->endOfMonth()->toDateString()]);
             })
-            ->when($customerId !== null, fn (Builder $query) => $query->where('customer_id', $customerId));
+            ->when($customerId !== null, fn (Builder $query) => $query->where('customer_id', $customerId))
+            ->when($dueSoon, fn (Builder $query) => $query->dueSoon(today()));
     }
 
     /**

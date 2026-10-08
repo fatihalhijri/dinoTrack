@@ -1,7 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
 import type { CustomerFormData } from '@/components/customers/customer-form';
 import CustomerForm from '@/components/customers/customer-form';
-import PackageSelect from '@/components/customers/package-select';
+import PackageSelect from '@/components/package-select';
 import PageHeader from '@/components/page-header';
 import {
     create as customersCreate,

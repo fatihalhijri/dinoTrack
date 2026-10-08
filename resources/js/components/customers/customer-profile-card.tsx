@@ -1,23 +1,8 @@
 import { ExternalLink, MapPin, MessageCircle } from 'lucide-react';
-import type { ReactNode } from 'react';
+import DetailRow from '@/components/detail-row';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate, formatDateTime, formatPhone } from '@/lib/format';
 import type { Customer } from '@/types';
-
-export function DetailRow({
-    label,
-    children,
-}: {
-    label: string;
-    children: ReactNode;
-}) {
-    return (
-        <div className="grid gap-0.5">
-            <dt className="text-xs text-muted-foreground">{label}</dt>
-            <dd className="min-w-0 text-sm break-words">{children}</dd>
-        </div>
-    );
-}
 
 const externalLinkClass =
     'inline-flex min-h-10 items-center gap-1.5 font-medium text-primary underline-offset-4 hover:underline';

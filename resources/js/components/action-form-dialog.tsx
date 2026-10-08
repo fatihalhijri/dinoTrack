@@ -12,8 +12,8 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 
 /**
- * Kerangka dialog aksi pelanggan yang punya field sendiri (tandai terpasang, daftar
- * kembali, ganti paket). Aksi satu langkah memakai ConfirmDialog.
+ * Kerangka dialog aksi yang punya field sendiri (tandai terpasang, daftar kembali, ganti
+ * paket, terbit ulang tagihan). Aksi satu langkah memakai ConfirmDialog.
  */
 export default function ActionFormDialog({
     open,

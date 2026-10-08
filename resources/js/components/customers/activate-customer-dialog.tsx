@@ -1,5 +1,5 @@
 import { useForm } from '@inertiajs/react';
-import ActionFormDialog from '@/components/customers/action-form-dialog';
+import ActionFormDialog from '@/components/action-form-dialog';
 import FormErrorAlert, {
     NON_FIELD_ERROR_KEYS,
 } from '@/components/form-error-alert';

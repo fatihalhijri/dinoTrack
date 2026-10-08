@@ -235,3 +235,23 @@ export type DashboardSummary = {
 export type CustomerCounts = Record<CustomerStatus, number> & {
     network_error: number;
 };
+
+/** Pelanggan terpilih di filter daftar tagihan (`invoices/index` prop `customer`). */
+export type CustomerReference = {
+    id: number;
+    code: string;
+    name: string;
+};
+
+/** Tagihan yang dirujuk (misalnya pengganti hasil terbit ulang). */
+export type InvoiceReference = {
+    id: number;
+    number: string;
+};
+
+/** Identitas usaha untuk tampilan cetak; `name` berisi `APP_NAME` jika belum diisi. */
+export type BusinessIdentity = {
+    name: string;
+    address: string | null;
+    whatsapp: string | null;
+};

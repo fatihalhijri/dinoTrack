@@ -11,9 +11,13 @@ import {
 import { formatRupiah } from '@/lib/format';
 import type { PackageOption } from '@/types';
 
+/** Nilai item "tanpa paket"; Radix Select tidak menerima value kosong. */
+const NONE = 'none';
+
 /**
  * Pilihan paket aktif (nama · kecepatan · harga) untuk tambah pelanggan, daftar kembali,
- * dan ganti paket. Nilai berupa id paket dalam bentuk string, atau '' jika belum dipilih.
+ * ganti paket, dan paket koreksi terbit ulang. Nilai berupa id paket dalam bentuk string,
+ * atau '' jika belum dipilih. Dengan `noneLabel`, '' menjadi pilihan tersendiri (opsional).
  */
 export default function PackageSelect({
     id,
@@ -23,6 +27,7 @@ export default function PackageSelect({
     packages,
     error,
     hint,
+    noneLabel,
 }: {
     id: string;
     label?: string;
@@ -31,13 +36,16 @@ export default function PackageSelect({
     packages: PackageOption[];
     error?: string;
     hint?: ReactNode;
+    noneLabel?: string;
 }) {
     return (
         <div className="grid gap-2">
             <Label htmlFor={id}>{label}</Label>
             <Select
-                value={value}
-                onValueChange={onChange}
+                value={value === '' && noneLabel ? NONE : value}
+                onValueChange={(selected) =>
+                    onChange(selected === NONE ? '' : selected)
+                }
                 disabled={packages.length === 0}
             >
                 <SelectTrigger
@@ -48,6 +56,9 @@ export default function PackageSelect({
                     <SelectValue placeholder="Pilih paket" />
                 </SelectTrigger>
                 <SelectContent>
+                    {noneLabel ? (
+                        <SelectItem value={NONE}>{noneLabel}</SelectItem>
+                    ) : null}
                     {packages.map((packageItem) => (
                         <SelectItem
                             key={packageItem.id}

@@ -17,5 +17,13 @@ export function AppShell({ children, variant = 'sidebar' }: Props) {
         );
     }
 
-    return <SidebarProvider defaultOpen={isOpen}>{children}</SidebarProvider>;
+    // Sidebar ikut disembunyikan saat halaman dicetak (misalnya rincian tagihan).
+    return (
+        <SidebarProvider
+            defaultOpen={isOpen}
+            className="print:[&_[data-slot=sidebar]]:hidden"
+        >
+            {children}
+        </SidebarProvider>
+    );
 }
