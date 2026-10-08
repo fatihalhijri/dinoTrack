@@ -16,6 +16,8 @@ type StatusBadgeProps = { label: string; className?: string } & (
     | { kind: 'charge'; value: PaymentChargeStatus }
     | { kind: 'review'; value: PaymentReviewStatus }
     | { kind: 'message'; value: MessageStatus }
+    /** Status aktif master data (paket, router, user); label "Aktif"/"Nonaktif" dari pemanggil. */
+    | { kind: 'active'; value: boolean }
 );
 
 const customerTones: Record<CustomerStatus, StatusTone> = {
@@ -71,11 +73,13 @@ function toneOf(props: StatusBadgeProps): StatusTone {
             return reviewTones[props.value];
         case 'message':
             return messageTones[props.value];
+        case 'active':
+            return props.value ? 'success' : 'neutral';
     }
 }
 
 /**
- * Badge status dengan warna konsisten di semua halaman. Label selalu dari `*_label` backend.
+ * Badge status dengan warna konsisten di semua halaman. Label enum selalu dari `*_label` backend.
  */
 export default function StatusBadge(props: StatusBadgeProps) {
     return (

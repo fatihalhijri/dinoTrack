@@ -39,6 +39,9 @@ export type ConfirmDialogReason = {
  * Dialog konfirmasi untuk aksi satu langkah (hapus, nonaktifkan, isolir, batalkan, ...).
  * Mengirim `data` + alasan opsional ke route Wayfinder lewat useForm, menampilkan error
  * field alasan di bawah input dan error lain (penolakan Action) sebagai pesan umum.
+ *
+ * Tanpa `open`, dialog dibuka oleh `trigger`. Dengan `open` + `onOpenChange`, satu dialog
+ * dipakai bersama oleh semua baris tabel (lihat useDialogTarget).
  */
 export default function ConfirmDialog({
     trigger,
@@ -50,8 +53,10 @@ export default function ConfirmDialog({
     reason,
     data = {},
     onSuccess,
+    open: controlledOpen,
+    onOpenChange,
 }: {
-    trigger: ReactNode;
+    trigger?: ReactNode;
     title: string;
     description?: ReactNode;
     action: UrlMethodPair;
@@ -60,8 +65,11 @@ export default function ConfirmDialog({
     reason?: ConfirmDialogReason;
     data?: ConfirmDialogData;
     onSuccess?: () => void;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
 }) {
-    const [open, setOpen] = useState(false);
+    const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+    const open = controlledOpen ?? uncontrolledOpen;
     const reasonField = reason?.field ?? 'reason';
     const form = useForm<ConfirmDialogData>(
         reason ? { ...data, [reasonField]: '' } : { ...data },
@@ -73,7 +81,8 @@ export default function ConfirmDialog({
     );
 
     const changeOpen = (next: boolean): void => {
-        setOpen(next);
+        setUncontrolledOpen(next);
+        onOpenChange?.(next);
 
         if (!next) {
             form.reset();
@@ -95,7 +104,7 @@ export default function ConfirmDialog({
 
     return (
         <Dialog open={open} onOpenChange={changeOpen}>
-            <DialogTrigger asChild>{trigger}</DialogTrigger>
+            {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
             <DialogContent>
                 <form onSubmit={submit} className="flex flex-col gap-4">
                     <DialogHeader>
@@ -142,13 +151,18 @@ export default function ConfirmDialog({
 
                     <DialogFooter className="gap-2">
                         <DialogClose asChild>
-                            <Button type="button" variant="outline">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="h-10"
+                            >
                                 Batal
                             </Button>
                         </DialogClose>
                         <Button
                             type="submit"
                             variant={destructive ? 'destructive' : 'default'}
+                            className="h-10"
                             disabled={form.processing}
                         >
                             {form.processing ? <Spinner /> : null}

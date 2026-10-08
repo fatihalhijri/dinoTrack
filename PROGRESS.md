@@ -2,7 +2,7 @@
 
 Status: ⬜ belum · 🟨 sedang dikerjakan · ✅ selesai
 
-Tahap berikutnya: **F02** (paket & router). Backend selesai; fase frontend membangun halaman React sesuai `docs/08-kontrak-halaman.md` (prompt di `prompts/F00-*.md` … `prompts/F09-*.md`).
+Tahap berikutnya: **F03** (pelanggan: daftar & form). Backend selesai; fase frontend membangun halaman React sesuai `docs/08-kontrak-halaman.md` (prompt di `prompts/F00-*.md` … `prompts/F09-*.md`).
 
 ## Fase backend
 
@@ -27,7 +27,7 @@ Tahap berikutnya: **F02** (paket & router). Backend selesai; fase frontend memba
 |---|---|---|---|---|
 | F00 | Design system & layout | ✅ | 2026-10-08 | Tema navy terang/gelap, Inter, sidebar per permission, `auth.user` eksplisit, tipe dari API Resource, `lib/format.ts`, 10 komponen bersama + 7 komponen shadcn; Pint, PHPStan, 1117 test, `types:check`, lint, dan build hijau (`npm run check` masih gagal di format markdown/JSON, lihat utang teknis) |
 | F01 | Dashboard | ✅ | 2026-10-08 | Dashboard per role (perlu perhatian, keuangan dengan waktu cache, pelanggan per status bertautan filter) dengan tipe `DashboardSummary`/`CustomerCounts` dan test bentuk props; Pint, PHPStan, 1117 test, `types:check`, dan build hijau (`npm run check` masih gagal di format markdown/JSON yang sama) |
-| F02 | Paket & router | ⬜ | | |
+| F02 | Paket & router | ✅ | 2026-10-08 | Halaman paket (filter status, modal dengan input Rupiah) dan router (tes koneksi, password kosong = tidak diubah) dengan kartu HP, aksi per permission, dan dialog bersama per halaman; Pint, PHPStan, 1122 test, `types:check`, dan build hijau, diuji di browser (`npm run check` masih gagal di format markdown/JSON yang sama) |
 | F03 | Pelanggan: daftar & form | ⬜ | | |
 | F04 | Pelanggan: detail & aksi | ⬜ | | |
 | F05 | Tagihan | ⬜ | | |
@@ -166,6 +166,7 @@ Catat di sini setiap keputusan yang menyimpang dari `docs/` beserta alasannya.
 | 2026-10-08 | F4 Token warna status semantik `success`/`warning`/`info` (+ `destructive`) di `app.css`; `StatusBadge` dan alert tidak memakai warna Tailwind langsung. Semua pasangan teks/latar dihitung ≥ 4.5:1 | Aturan frontend 1 (tanpa kode warna di komponen) |
 | 2026-10-08 | F6 Dashboard: bagian Pelanggan memakai `customer_counts` real-time untuk semua role (`summary.*_customers` tetap di kontrak tetapi tidak ditampilkan) dan menampilkan 4 status termasuk Berhenti; galat router dari `customer_counts` sehingga kasir/teknisi juga melihatnya; kartu "Jatuh tempo 7 hari" tanpa tautan; grid Keuangan 1/2/3 dan Pelanggan 2/2/4 (prompt menyebut 1/2/4) | Opsi Q1-a/Q2-a/Q3-a rencana F01: angka tidak tertinggal cache 5 menit; belum ada filter jatuh tempo di `/invoices`; 3 kartu keuangan tidak menyisakan slot kosong dan angka pelanggan pendek muat 2 kolom di 360 px |
 | 2026-10-08 | F5 Tanpa runner test JS: `lib/format.ts` diperiksa manual (16 kasus, dua zona waktu) + typecheck. `DataTable` tanpa TanStack Table (pengurutan/pagination di server); `Pagination` tidak memakai label backend yang berbahasa Inggris | Tidak menambah infrastruktur/paket di luar cakupan F00 |
+| 2026-10-08 | F7 Paket & router: tombol Hapus paket selalu tampil untuk `packages.manage` dan penolakan backend (`errors.package`/`errors.router`) tampil di dialog, karena `subscriptions_count` tidak menghitung `next_package_id` dan `customers_count` tidak menghitung pelanggan terhapus. Komponen bersama baru: `useDialogTarget` (satu modal/konfirmasi per halaman, `key` baru setiap dibuka), `RowActionButton` (ikon + tooltip di tabel, berlabel di kartu HP, 40 px), `RupiahInput` + `parseRupiahInput()` (nilai integer), `StatusBadge` `kind: 'active'`; `ConfirmDialog` mendukung mode terkontrol (`open`/`onOpenChange`, `trigger` opsional) dan tombol footer dialog 40 px. Modal ditaruh di `components/<modul>/` karena file di `pages/**` dianggap halaman. Halaman router tanpa pencarian/filter (tidak ada di kontrak) | Opsi Q1-a rencana F02: halaman tidak menebak aturan bisnis dari angka yang tidak lengkap; DataTable merender tabel dan kartu sekaligus sehingga form per baris akan berlipat ganda |
 
 ## Utang teknis
 
@@ -195,7 +196,7 @@ Hal yang sengaja ditunda untuk dikerjakan nanti.
 - R-11 (audit): `npm audit` dev melaporkan `tinypool` lewat `vite-plus` 0.3.0; naikkan ke ≥0.3.3 saat fase frontend.
 - Test yang belum ada (docs/09 butir 9): QRIS untuk invoice pelanggan `terminated`, limit `/isolir` dan halaman tagihan per IP, pengingat terlewat tidak dikirim belakangan, isolir ulang tanpa pesan kedua.
 - `public/favicon.ico` dan `public/apple-touch-icon.png` masih logo Laravel karena ImageMagick tidak tersedia; hanya `favicon.svg` yang sudah logo DinoTrack (F09).
-- Teks bahasa Inggris di halaman auth dan settings bawaan starter kit (login, profil, keamanan, tampilan) serta `sr-only` "Toggle sidebar" di `components/ui/sidebar.tsx` belum diterjemahkan (F09, sesuai keputusan F00).
+- Teks bahasa Inggris di halaman auth dan settings bawaan starter kit (login, profil, keamanan, tampilan) serta `sr-only` "Toggle sidebar" di `components/ui/sidebar.tsx` dan "Close" di `components/ui/dialog.tsx` belum diterjemahkan (F09, sesuai keputusan F00).
 - Filter jatuh tempo (misalnya `due_within=7`) di `/invoices` belum ada; tambahkan di F05 lalu tautkan kartu "Jatuh tempo 7 hari" di dashboard.
 - Tautan kartu dashboard menuju halaman yang baru dibuat di F03 (pelanggan), F06 (pembayaran), dan F07 (laporan); sebelum itu tautan membuka halaman yang belum ada. Tampilan dashboard di 360 px belum diperiksa di browser.
 - `app-header.tsx` dan `layouts/app/app-header-layout.tsx` tidak dipakai (layout sidebar), hanya disesuaikan agar lolos typecheck; hapus di F09.

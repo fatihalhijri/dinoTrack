@@ -27,19 +27,27 @@ function routerForm(array $overrides = []): array
     ];
 }
 
-it('menampilkan daftar router tanpa password', function () {
-    Router::factory()->create(['name' => 'Router Utama', 'password' => 'rahasia-router']);
+it('menampilkan daftar router dengan jumlah pelanggan tanpa password', function () {
+    $router = Router::factory()->create(['name' => 'Router Utama', 'password' => 'rahasia-router']);
+    Customer::factory()->for($router)->count(2)->create();
 
     $response = $this->actingAs(userWithRole(Role::Admin))->get(route('routers.index'));
 
     $response->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('routers/index')
+            ->component('routers/index', true)
             ->has('routers.data', 1, fn (Assert $router) => $router
                 ->where('name', 'Router Utama')
+                ->where('customers_count', 2)
                 ->missing('password')
                 ->etc()));
     expect($response->getContent())->not->toContain('rahasia-router');
+});
+
+it('menolak teknisi membuka halaman router', function () {
+    $this->actingAs(userWithRole(Role::Teknisi))
+        ->get(route('routers.index'))
+        ->assertForbidden();
 });
 
 it('admin menambah router dengan password terenkripsi', function () {

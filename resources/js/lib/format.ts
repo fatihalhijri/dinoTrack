@@ -208,3 +208,13 @@ export function formatPhone(phone: string | null | undefined): string {
 
     return groups.join('-');
 }
+
+/** Batas digit input Rupiah agar hasilnya tetap integer aman (di bawah 2^53). */
+const MAX_RUPIAH_DIGITS = 15;
+
+/** Teks input Rupiah `'150.000'` / `'Rp150000'` → `150000`, atau null jika tanpa angka. */
+export function parseRupiahInput(value: string): number | null {
+    const digits = value.replace(/\D/g, '').slice(0, MAX_RUPIAH_DIGITS);
+
+    return digits === '' ? null : Number(digits);
+}
