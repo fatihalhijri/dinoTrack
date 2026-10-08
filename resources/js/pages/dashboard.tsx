@@ -23,6 +23,7 @@ import { useCan } from '@/hooks/use-can';
 import { formatDateTime, formatNumber } from '@/lib/format';
 import { dashboard } from '@/routes';
 import { index as customersIndex } from '@/routes/customers';
+import { index as invoicesIndex } from '@/routes/invoices';
 import { index as paymentsIndex } from '@/routes/payments';
 import { index as reportsIndex, outstanding } from '@/routes/reports';
 import type { CustomerCounts, CustomerStatus, DashboardSummary } from '@/types';
@@ -139,6 +140,9 @@ export default function Dashboard({
                             <StatCard
                                 title="Jatuh tempo 7 hari ke depan"
                                 icon={CalendarClock}
+                                href={invoicesIndex({
+                                    query: { due: 'this_week' },
+                                })}
                                 value={
                                     <Money
                                         amount={summary.due_this_week_amount}

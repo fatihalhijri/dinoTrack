@@ -153,6 +153,22 @@ export function formatDateTime(value: string | null | undefined): string {
     return `${parts.day} ${shortMonth(parts.month)} ${parts.year} ${pad(parts.hour)}.${pad(parts.minute)}`;
 }
 
+/**
+ * Nilai `<input type="date">` (`YYYY-MM-DD`) menurut tanggal WIB: timestamp ISO atau,
+ * tanpa argumen, hari ini. Dipakai untuk default dan batas min/max input tanggal.
+ */
+export function toDateInputValue(
+    value: string = new Date().toISOString(),
+): string {
+    const parts = partsOf(value);
+
+    if (parts === null) {
+        return '';
+    }
+
+    return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}`;
+}
+
 /** Periode tagihan → `6 Okt – 5 Nov 2026` (tahun ditulis dua kali jika berbeda). */
 export function formatPeriod(start: string, end: string): string {
     const from = partsOf(start);

@@ -57,7 +57,7 @@ app/
 ├── Support/                 Helper (Money, BillingPeriod, ProrataCalculator, InvoiceNumberGenerator,
 │                            SequenceGenerator, SettingsRepository, ActivityLogger, PhoneNumber,
 │                            IsolationRules, CustomerNetworkLock, MessageTemplateRenderer,
-│                            InvoicePaymentLink, LastAdminGuard, SearchTerm)
+│                            InvoicePaymentLink, LastAdminGuard, SearchTerm, ActivityActionLabel)
 └── Data/                    DTO sederhana (readonly class) bila perlu; Data/Reports untuk laporan
 tests/
 ├── Feature/                 Alur end-to-end (HTTP, job, scheduler)

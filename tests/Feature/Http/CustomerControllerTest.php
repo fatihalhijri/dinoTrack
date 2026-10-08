@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Package;
 use App\Models\Router;
+use App\Support\ActivityLogger;
 use Inertia\Testing\AssertableInertia as Assert;
 
 it('memfilter daftar pelanggan menurut status, paket, router, dan galat router', function (array $query, string $expectedName) {
@@ -140,7 +141,7 @@ it('menampilkan detail pelanggan tanpa riwayat tagihan untuk teknisi', function 
         ->get(route('customers.show', $customer))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('customers/show')
+            ->component('customers/show', true)
             ->where('customer.id', $customer->id)
             ->where('customer.subscription.package.name', $customer->activeSubscription->package->name)
             ->where('invoices', null)
@@ -151,17 +152,54 @@ it('menampilkan detail pelanggan tanpa riwayat tagihan untuk teknisi', function 
             ->missing('connection'));
 });
 
-it('menampilkan riwayat tagihan pelanggan untuk kasir', function () {
+it('menampilkan riwayat tagihan pelanggan untuk kasir tanpa opsi ganti paket', function () {
     $customer = customerOnProfile(Customer::factory()->active());
     $invoice = invoiceDueAt($customer, '2026-10-12');
 
     $this->actingAs(userWithRole(Role::Kasir))
         ->get(route('customers.show', $customer))
         ->assertInertia(fn (Assert $page) => $page
+            ->component('customers/show', true)
             ->has('invoices', 1)
             ->where('invoices.0.number', $invoice->number)
             ->has('payments', 0)
-            ->has('messages', 0));
+            ->has('messages', 0)
+            ->where('packages', null));
+});
+
+it('menampilkan rencana ganti paket dan hanya paket aktif untuk admin', function () {
+    $customer = customerOnProfile(Customer::factory()->active());
+    $nextPackage = Package::factory()->create(['name' => 'Home 50 Mbps']);
+    $customer->activeSubscription->update(['next_package_id' => $nextPackage->id]);
+    Package::factory()->inactive()->create(['name' => 'Paket Lama']);
+
+    $this->actingAs(userWithRole(Role::Admin))
+        ->get(route('customers.show', $customer))
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('customers/show', true)
+            ->where('customer.subscription.next_package.name', 'Home 50 Mbps')
+            ->has('invoices', 0)
+            ->has('payments', 0)
+            ->has('messages', 0)
+            ->where('packages', fn ($packages) => collect($packages)->pluck('name')->sort()->values()->all()
+                === collect([$customer->activeSubscription->package->name, 'Home 50 Mbps'])->sort()->values()->all()));
+});
+
+it('memberi label Bahasa Indonesia pada riwayat aktivitas pelanggan', function () {
+    $customer = Customer::factory()->active()->create();
+    $admin = userWithRole(Role::Admin);
+    app(ActivityLogger::class)->log('customer.isolation_requested', $customer, $admin, ['reason' => 'Permintaan pelanggan']);
+    app(ActivityLogger::class)->log('customer.aksi_baru', $customer);
+
+    $this->actingAs($admin)
+        ->get(route('customers.show', $customer))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('activities', 2)
+            ->where('activities.0.action_label', 'customer.aksi_baru')
+            ->where('activities.0.user', null)
+            ->where('activities.1.action_label', 'Isolir manual diminta')
+            ->where('activities.1.user.name', $admin->name)
+            ->where('activities.1.properties.reason', 'Permintaan pelanggan'));
 });
 
 it('memuat status koneksi pelanggan dari router setelah halaman tampil', function (Closure $configure, array $expected) {
@@ -177,6 +215,17 @@ it('memuat status koneksi pelanggan dari router setelah halaman tampil', functio
     'online' => [fn ($network) => $network->online = true, ['online' => true, 'error' => null]],
     'router tidak terjangkau' => [fn ($network) => $network->failWith(new RouterUnreachableException('timeout')), ['online' => null, 'error' => 'Router tidak dapat dihubungi.']],
 ]);
+
+it('tidak menghubungi router untuk status koneksi pelanggan yang berhenti', function () {
+    $network = fakeNetwork();
+    $network->failWith(new RouterUnreachableException('timeout'));
+    $customer = Customer::factory()->terminated()->create();
+
+    $this->actingAs(userWithRole(Role::Teknisi))
+        ->get(route('customers.show', $customer))
+        ->assertInertia(fn (Assert $page) => $page
+            ->loadDeferredProps(fn (Assert $reload) => $reload->where('connection', ['online' => false, 'error' => null])));
+});
 
 it('menyertakan router nonaktif yang sedang dipakai di form ubah pelanggan, bukan router nonaktif lain', function () {
     $currentRouter = Router::factory()->inactive()->create(['name' => 'A Router Lama']);

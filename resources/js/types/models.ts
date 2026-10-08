@@ -187,6 +187,8 @@ export type MessageLog = {
 export type ActivityLog = {
     id: number;
     action: string;
+    /** Label Bahasa Indonesia; aksi tanpa label berisi nama aksi mentah. */
+    action_label: string;
     user?: { id: number; name: string } | null;
     properties: Record<string, unknown> | null;
     created_at: string | null;
@@ -232,4 +234,24 @@ export type DashboardSummary = {
 /** Jumlah pelanggan per status (real-time) + pelanggan dengan galat router. */
 export type CustomerCounts = Record<CustomerStatus, number> & {
     network_error: number;
+};
+
+/** Pelanggan terpilih di filter daftar tagihan (`invoices/index` prop `customer`). */
+export type CustomerReference = {
+    id: number;
+    code: string;
+    name: string;
+};
+
+/** Tagihan yang dirujuk (misalnya pengganti hasil terbit ulang). */
+export type InvoiceReference = {
+    id: number;
+    number: string;
+};
+
+/** Identitas usaha untuk tampilan cetak; `name` berisi `APP_NAME` jika belum diisi. */
+export type BusinessIdentity = {
+    name: string;
+    address: string | null;
+    whatsapp: string | null;
 };

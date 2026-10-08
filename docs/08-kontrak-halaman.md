@@ -121,7 +121,7 @@ type Invoice = {
   items?: InvoiceItem[]; payments?: Payment[]; payment_charges?: PaymentCharge[]
 }
 type MessageLog = { id: number; invoice_id: number | null; template_key: MessageTemplateKey | null; template_label: string | null; phone: string; body: string; status: MessageStatus; status_label: string; error: string | null; sent_at: string | null; created_at: string | null }
-type ActivityLog = { id: number; action: string; user?: { id: number; name: string } | null; properties: Record<string, unknown> | null; created_at: string | null }
+type ActivityLog = { id: number; action: string; action_label: string; user?: { id: number; name: string } | null; properties: Record<string, unknown> | null; created_at: string | null }
 type User = { id: number; name: string; email: string; role: Role | null; role_label: string | null; is_active: boolean; deactivated_at: string | null; created_at: string | null }
 type MessageTemplate = { id: number; key: MessageTemplateKey; label: string; body: string; is_active: boolean; updated_at: string | null }
 ```
@@ -190,7 +190,7 @@ Aksi: `POST /customers` (`name`, `phone`, `address`, `odp`, `latitude`,
 | `invoices` | Invoice[] \| null | 24 terbaru; `null` tanpa `invoices.view` (teknisi). Riwayat lengkap: `/invoices?customer_id=` |
 | `payments` | Payment[] \| null | 24 terbaru; `null` tanpa `payments.view` |
 | `messages` | MessageLog[] \| null | 24 terbaru; `null` tanpa `invoices.view` |
-| `activities` | ActivityLog[] | 24 terbaru, dengan `user` |
+| `activities` | ActivityLog[] | 24 terbaru, dengan `user`; `action_label` dari `App\Support\ActivityActionLabel` (aksi tanpa label = nama aksi mentah) |
 | `packages` | `{ id, name, speed_label, price }[]` \| null | paket aktif untuk ganti paket/aktifkan kembali; `null` tanpa `customers.update` |
 | `connection` | `{ online: boolean\|null, error: string\|null }` | **deferred** (`<Deferred data="connection">`); `online: null` jika router tidak terjangkau |
 
@@ -222,8 +222,14 @@ diubah selama `pending` (ditolak Action dengan error per field).
 | Prop | Tipe |
 |---|---|
 | `invoices` | Paginated\<Invoice\> (dengan `customer`) |
-| `filters` | `{ search?, status?, period? (YYYY-MM), customer_id?, per_page? }` |
+| `filters` | `{ search?, status?, period? (YYYY-MM), customer_id?, due?, per_page? }` |
 | `statuses` | `{ value, label }[]` |
+| `customer` | `{ id, code, name }` \| null — pelanggan dari filter `customer_id` (chip "Tagihan milik …"); `null` tanpa filter atau jika pelanggan tidak ditemukan |
+
+`search` mencari nomor tagihan serta kode dan nama pelanggan. `period` mencocokkan bulan
+`period_start`. `due=this_week` = jatuh tempo minggu ini (docs/04 "Laporan": `unpaid`/`overdue`
+dengan `due_at` hari ini s.d. H+6, scope `Invoice::dueSoon`, sama dengan kartu dashboard);
+nilai lain ditolak validasi.
 
 ### `invoices/show` — `GET /invoices/{id}` (`invoices.view`)
 
@@ -232,7 +238,9 @@ diubah selama `pending` (ditolak Action dengan error per field).
 | `invoice` | Invoice | dengan `customer`, `items`, `payments` (+ `received_by`, `order_id`), `payment_charges` (terbaru dulu) |
 | `payment_link` | string | signed URL halaman tagihan publik untuk disalin/dibagikan |
 | `messages` | MessageLog[] | pesan WhatsApp untuk tagihan ini |
-| `packages` | `{ id, name, price }[]` \| null | paket koreksi untuk terbit ulang; `null` tanpa `invoices.cancel` |
+| `packages` | `{ id, name, speed_label, price }[]` \| null | paket aktif untuk koreksi terbit ulang; `null` tanpa `invoices.cancel` |
+| `replacement` | `{ id, number }` \| null | invoice aktif (bukan `cancelled`) untuk subscription dan periode yang sama, hasil terbit ulang; hanya diisi untuk invoice `cancelled`. Jika terisi, periode itu tidak bisa diterbitkan ulang lagi |
+| `business` | `{ name: string, address: string\|null, whatsapp: string\|null }` | identitas usaha untuk tampilan cetak; `name` = `APP_NAME` jika belum diisi |
 
 Aksi:
 
