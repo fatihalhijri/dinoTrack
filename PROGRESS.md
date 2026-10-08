@@ -2,7 +2,7 @@
 
 Status: ⬜ belum · 🟨 sedang dikerjakan · ✅ selesai
 
-Tahap berikutnya: **F03** (pelanggan: daftar & form). Backend selesai; fase frontend membangun halaman React sesuai `docs/08-kontrak-halaman.md` (prompt di `prompts/F00-*.md` … `prompts/F09-*.md`).
+Tahap berikutnya: **F04** (pelanggan: detail & aksi). Backend selesai; fase frontend membangun halaman React sesuai `docs/08-kontrak-halaman.md` (prompt di `prompts/F00-*.md` … `prompts/F09-*.md`).
 
 ## Fase backend
 
@@ -28,7 +28,7 @@ Tahap berikutnya: **F03** (pelanggan: daftar & form). Backend selesai; fase fron
 | F00 | Design system & layout | ✅ | 2026-10-08 | Tema navy terang/gelap, Inter, sidebar per permission, `auth.user` eksplisit, tipe dari API Resource, `lib/format.ts`, 10 komponen bersama + 7 komponen shadcn; Pint, PHPStan, 1117 test, `types:check`, lint, dan build hijau (`npm run check` masih gagal di format markdown/JSON, lihat utang teknis) |
 | F01 | Dashboard | ✅ | 2026-10-08 | Dashboard per role (perlu perhatian, keuangan dengan waktu cache, pelanggan per status bertautan filter) dengan tipe `DashboardSummary`/`CustomerCounts` dan test bentuk props; Pint, PHPStan, 1117 test, `types:check`, dan build hijau (`npm run check` masih gagal di format markdown/JSON yang sama) |
 | F02 | Paket & router | ✅ | 2026-10-08 | Halaman paket (filter status, modal dengan input Rupiah) dan router (tes koneksi, password kosong = tidak diubah) dengan kartu HP, aksi per permission, dan dialog bersama per halaman; Pint, PHPStan, 1122 test, `types:check`, dan build hijau, diuji di browser (`npm run check` masih gagal di format markdown/JSON yang sama) |
-| F03 | Pelanggan: daftar & form | ⬜ | | |
+| F03 | Pelanggan: daftar & form | ✅ | 2026-10-08 | Daftar pelanggan (filter status/paket/router/galat router, kartu HP) dan form tambah/ubah satu kolom di HP dengan "Pakai lokasi saya" dan field koneksi terkunci di luar `pending`; Pint, PHPStan, 1126 test, `types:check`, dan build hijau, diuji di browser lebar desktop (360 px belum, lihat utang teknis; `npm run check` masih gagal di format markdown/JSON yang sama) |
 | F04 | Pelanggan: detail & aksi | ⬜ | | |
 | F05 | Tagihan | ⬜ | | |
 | F06 | Pembayaran | ⬜ | | |
@@ -167,6 +167,7 @@ Catat di sini setiap keputusan yang menyimpang dari `docs/` beserta alasannya.
 | 2026-10-08 | F6 Dashboard: bagian Pelanggan memakai `customer_counts` real-time untuk semua role (`summary.*_customers` tetap di kontrak tetapi tidak ditampilkan) dan menampilkan 4 status termasuk Berhenti; galat router dari `customer_counts` sehingga kasir/teknisi juga melihatnya; kartu "Jatuh tempo 7 hari" tanpa tautan; grid Keuangan 1/2/3 dan Pelanggan 2/2/4 (prompt menyebut 1/2/4) | Opsi Q1-a/Q2-a/Q3-a rencana F01: angka tidak tertinggal cache 5 menit; belum ada filter jatuh tempo di `/invoices`; 3 kartu keuangan tidak menyisakan slot kosong dan angka pelanggan pendek muat 2 kolom di 360 px |
 | 2026-10-08 | F5 Tanpa runner test JS: `lib/format.ts` diperiksa manual (16 kasus, dua zona waktu) + typecheck. `DataTable` tanpa TanStack Table (pengurutan/pagination di server); `Pagination` tidak memakai label backend yang berbahasa Inggris | Tidak menambah infrastruktur/paket di luar cakupan F00 |
 | 2026-10-08 | F7 Paket & router: tombol Hapus paket selalu tampil untuk `packages.manage` dan penolakan backend (`errors.package`/`errors.router`) tampil di dialog, karena `subscriptions_count` tidak menghitung `next_package_id` dan `customers_count` tidak menghitung pelanggan terhapus. Komponen bersama baru: `useDialogTarget` (satu modal/konfirmasi per halaman, `key` baru setiap dibuka), `RowActionButton` (ikon + tooltip di tabel, berlabel di kartu HP, 40 px), `RupiahInput` + `parseRupiahInput()` (nilai integer), `StatusBadge` `kind: 'active'`; `ConfirmDialog` mendukung mode terkontrol (`open`/`onOpenChange`, `trigger` opsional) dan tombol footer dialog 40 px. Modal ditaruh di `components/<modul>/` karena file di `pages/**` dianggap halaman. Halaman router tanpa pencarian/filter (tidak ada di kontrak) | Opsi Q1-a rencana F02: halaman tidak menebak aturan bisnis dari angka yang tidak lengkap; DataTable merender tabel dan kartu sekaligus sehingga form per baris akan berlipat ganda |
+| 2026-10-08 | F8 Pelanggan: form tambah/ubah memakai satu `CustomerForm` (`components/customers/`) dengan slot paket untuk form tambah; tanggal tagih dikosongkan di form tambah (wajib dipilih, docs/04 "bebas dari tanggal pasang"), router terpilih otomatis jika hanya ada satu router aktif. Form ubah mengunci router/username PPPoE/tanggal tagih di luar `pending` dan hanya mengirim `billing_day` selama `pending` (pelanggan berhenti tidak punya subscription aktif sehingga `UpdateCustomer` akan menolak nilai apa pun). WA di form ubah ditampilkan format lokal (`formatPhone`), dinormalisasi backend. Filter galat router berupa toggle (`network_error=1`). Daftar tanpa kolom aksi: kode/nama dan kartu HP menaut ke detail; tombol Ubah ada di detail (F04). Breadcrumb dinamis lewat callback `Page.layout = (props) => ...`. Tanpa stub `customers/show` | Opsi Q1-a/Q2-a rencana F03 |
 
 ## Utang teknis
 
@@ -198,5 +199,8 @@ Hal yang sengaja ditunda untuk dikerjakan nanti.
 - `public/favicon.ico` dan `public/apple-touch-icon.png` masih logo Laravel karena ImageMagick tidak tersedia; hanya `favicon.svg` yang sudah logo DinoTrack (F09).
 - Teks bahasa Inggris di halaman auth dan settings bawaan starter kit (login, profil, keamanan, tampilan) serta `sr-only` "Toggle sidebar" di `components/ui/sidebar.tsx` dan "Close" di `components/ui/dialog.tsx` belum diterjemahkan (F09, sesuai keputusan F00).
 - Filter jatuh tempo (misalnya `due_within=7`) di `/invoices` belum ada; tambahkan di F05 lalu tautkan kartu "Jatuh tempo 7 hari" di dashboard.
-- Tautan kartu dashboard menuju halaman yang baru dibuat di F03 (pelanggan), F06 (pembayaran), dan F07 (laporan); sebelum itu tautan membuka halaman yang belum ada. Tampilan dashboard di 360 px belum diperiksa di browser.
+- Tautan kartu dashboard menuju halaman yang baru dibuat di F06 (pembayaran) dan F07 (laporan); sebelum itu tautan membuka halaman yang belum ada. Tampilan dashboard di 360 px belum diperiksa di browser.
 - `app-header.tsx` dan `layouts/app/app-header-layout.tsx` tidak dipakai (layout sidebar), hanya disesuaikan agar lolos typecheck; hapus di F09.
+- F03: tautan ke detail pelanggan dan redirect setelah simpan menuju `customers/show` yang baru dibuat di F04 (opsi Q1-a, tanpa stub); alur simpan pelanggan baru belum dicoba di browser.
+- F03: halaman pelanggan (daftar, tambah, ubah) belum diperiksa di browser pada lebar 360 px; jendela Chrome tidak bisa diperkecil dari 1536 px dan iframe ditolak `X-Frame-Options`. Periksa lewat DevTools mode perangkat (bersama dashboard) di F04 atau F09. "Pakai lokasi saya" belum dicoba di HP lewat HTTPS.
+- Database development sempat tanpa data permission (tabel `permissions` kosong, teknisi/kasir 403); sudah diisi ulang dengan `RolePermissionSeeder` saat F03. Jalankan seeder itu lagi setelah `migrate:fresh` tanpa `--seed`.

@@ -26,7 +26,7 @@ it('memfilter daftar pelanggan menurut status, paket, router, dan galat router',
         ->get(route('customers.index', $query))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('customers/index')
+            ->component('customers/index', true)
             ->has('customers.data', 1)
             ->where('customers.data.0.name', $expectedName)
             ->has('statuses', 4)
@@ -39,6 +39,43 @@ it('memfilter daftar pelanggan menurut status, paket, router, dan galat router',
     'galat router' => [['network_error' => '1'], 'Galat Router'],
     'kode pelanggan' => [['search' => 'PLG-000777'], 'Budi Santoso'],
 ]);
+
+it('mengembalikan filter daftar pelanggan yang dikirim untuk mengisi ulang form filter', function () {
+    $package = Package::factory()->create();
+    $router = Router::factory()->create();
+    $query = [
+        'search' => 'budi',
+        'status' => 'active',
+        'package_id' => (string) $package->id,
+        'router_id' => (string) $router->id,
+        'network_error' => '1',
+        'per_page' => '50',
+    ];
+
+    $this->actingAs(userWithRole(Role::Teknisi))
+        ->get(route('customers.index', $query))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('customers/index', true)
+            ->where('filters', $query));
+});
+
+it('menampilkan paket, router, dan galat router setiap baris daftar pelanggan', function () {
+    $customer = customerOnProfile(Customer::factory()->active()->state(['network_error_at' => now(), 'network_error' => 'Router tidak dapat dihubungi.']));
+
+    $this->actingAs(userWithRole(Role::Kasir))
+        ->get(route('customers.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('customers/index', true)
+            ->where('filters', [])
+            ->has('customers.data', 1, fn (Assert $row) => $row
+                ->where('router.name', $customer->router->name)
+                ->where('subscription.package.name', $customer->activeSubscription->package->name)
+                ->where('subscription.package.speed_label', $customer->activeSubscription->package->speed_label)
+                ->where('network_error', 'Router tidak dapat dihubungi.')
+                ->where('network_error_at', $customer->network_error_at->toIso8601String())
+                ->etc()));
+});
 
 it('mencari tanda persen sebagai teks biasa, bukan wildcard', function () {
     Customer::factory()->create(['name' => 'Diskon 100% Net']);
@@ -55,6 +92,21 @@ it('menolak filter status yang tidak dikenal', function () {
     $this->actingAs(userWithRole(Role::Teknisi))
         ->get(route('customers.index', ['status' => 'hapus']))
         ->assertSessionHasErrors('status');
+});
+
+it('membuka form tambah pelanggan untuk teknisi dengan paket dan router aktif saja', function () {
+    $package = Package::factory()->create(['name' => 'Home 20 Mbps', 'speed_label' => '20 Mbps', 'price' => 150000]);
+    Package::factory()->inactive()->create();
+    $router = Router::factory()->create(['name' => 'Router Utama']);
+    Router::factory()->inactive()->create();
+
+    $this->actingAs(userWithRole(Role::Teknisi))
+        ->get(route('customers.create'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('customers/create', true)
+            ->where('packages', [['id' => $package->id, 'name' => 'Home 20 Mbps', 'speed_label' => '20 Mbps', 'price' => 150000]])
+            ->where('routers', [['id' => $router->id, 'name' => 'Router Utama']]));
 });
 
 it('teknisi mendaftarkan pelanggan pending lalu diarahkan ke detailnya', function () {
@@ -130,12 +182,13 @@ it('menyertakan router nonaktif yang sedang dipakai di form ubah pelanggan, buka
     $currentRouter = Router::factory()->inactive()->create(['name' => 'A Router Lama']);
     Router::factory()->inactive()->create(['name' => 'B Router Mati']);
     $activeRouter = Router::factory()->create(['name' => 'C Router Aktif']);
-    $customer = Customer::factory()->for($currentRouter)->create();
+    $customer = Customer::factory()->for($currentRouter)->withSubscription()->create();
 
     $this->actingAs(userWithRole(Role::Admin))
         ->get(route('customers.edit', $customer))
         ->assertInertia(fn (Assert $page) => $page
-            ->component('customers/edit')
+            ->component('customers/edit', true)
+            ->where('customer.subscription.billing_day', $customer->activeSubscription->billing_day)
             ->where('routers', [
                 ['id' => $currentRouter->id, 'name' => 'A Router Lama'],
                 ['id' => $activeRouter->id, 'name' => 'C Router Aktif'],
@@ -175,6 +228,25 @@ it('admin mengubah data identitas pelanggan', function () {
     expect($customer->refresh())
         ->name->toBe('Nama Baru')
         ->address->toBe('Alamat Baru');
+});
+
+it('admin mengubah identitas pelanggan berhenti tanpa mengirim tanggal tagih', function () {
+    $customer = Customer::factory()->terminated()->withSubscription()->create();
+
+    $this->actingAs(userWithRole(Role::Admin))
+        ->put(route('customers.update', $customer), [
+            'name' => 'Nama Baru',
+            'phone' => '0812-3456-7890',
+            'address' => $customer->address,
+            'router_id' => (string) $customer->router_id,
+            'pppoe_username' => $customer->pppoe_username,
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('customers.show', $customer));
+
+    expect($customer->refresh())
+        ->name->toBe('Nama Baru')
+        ->phone->toBe('6281234567890');
 });
 
 it('admin menghapus pelanggan pending yang salah input', function () {
