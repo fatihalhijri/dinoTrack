@@ -1,18 +1,22 @@
-export type User = {
+import type { Role } from '@/types/models';
+import type { Permission } from '@/types/permissions';
+
+/**
+ * User login dari props bersama `auth.user` (HandleInertiaRequests::userData).
+ */
+export type AuthUser = {
     id: number;
     name: string;
     email: string;
-    avatar?: string;
+    role: Role | null;
+    role_label: string | null;
     email_verified_at: string | null;
-    two_factor_enabled?: boolean;
-    created_at: string;
-    updated_at: string;
-    [key: string]: unknown;
+    two_factor_enabled: boolean;
 };
 
 export type Auth = {
-    user: User;
-    permissions: string[];
+    user: AuthUser | null;
+    permissions: Permission[];
 };
 
 export type Passkey = {

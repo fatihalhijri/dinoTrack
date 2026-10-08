@@ -47,10 +47,31 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
-                'user' => $user,
+                'user' => $user === null ? null : $this->userData($user),
                 'permissions' => fn (): array => $this->permissionsOf($user),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+        ];
+    }
+
+    /**
+     * Data user minimal untuk semua halaman; model mentah tidak dikirim agar kolom baru
+     * atau relasi yang kebetulan termuat (misalnya roles) tidak ikut terkirim (audit R-3).
+     *
+     * @return array{id: int, name: string, email: string, role: string|null, role_label: string|null, email_verified_at: string|null, two_factor_enabled: bool}
+     */
+    private function userData(User $user): array
+    {
+        $role = Role::tryFrom((string) $user->getRoleNames()->first());
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $role?->value,
+            'role_label' => $role?->label(),
+            'email_verified_at' => $user->email_verified_at?->toIso8601String(),
+            'two_factor_enabled' => $user->hasEnabledTwoFactorAuthentication(),
         ];
     }
 

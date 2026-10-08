@@ -1,6 +1,6 @@
 # Tahap F00 — Design System & Layout
 
-**Tujuan:** fondasi visual dan komponen bersama dinoTrack (tema biru tua laut,
+**Tujuan:** fondasi visual dan komponen bersama DinoTrack (tema biru tua laut,
 sidebar per permission, tipe data, format Rupiah/tanggal) agar tahap
 berikutnya tinggal menyusun halaman.
 
@@ -17,9 +17,9 @@ Kerjakan:
    --ring, --sidebar* (sidebar navy gelap dengan teks terang), --chart-1..5
    yang selaras, mode terang dan gelap, kontras teks minimal AA. Tentukan
    font (tetap Instrument Sans atau ganti Inter) dan sebutkan alasannya.
-2. Branding: APP_NAME=dinoTrack di .env (tunjukkan perubahannya dulu),
-   ikon logo dinoTrack (SVG sederhana) di app-logo-icon.tsx, favicon, dan
-   judul tab "%s · dinoTrack". Hapus tautan footer starter kit
+2. Branding: APP_NAME=DinoTrack di .env (tunjukkan perubahannya dulu),
+   ikon logo DinoTrack (SVG sederhana) di app-logo-icon.tsx, favicon, dan
+   judul tab "%s · DinoTrack". Hapus tautan footer starter kit
    (Repository/Documentation).
 3. Sidebar per permission dengan grup: Utama (Dashboard), Operasional
    (Pelanggan, Tagihan, Pembayaran), Master (Paket, Router), Laporan, Admin
@@ -69,4 +69,4 @@ Rencana dulu, tunggu persetujuan.
 - `npm run types:check`, `npm run check`, `npm run build` bersih
 
 ## Commit
-`feat(ui): design system, tema dinoTrack, dan layout sidebar`
+`feat(ui): design system, tema DinoTrack, dan layout sidebar`

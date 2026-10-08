@@ -21,6 +21,18 @@ it('membagikan permission kasir ke halaman Inertia', function () {
     ]));
 });
 
+it('membagikan permission teknisi ke halaman Inertia', function () {
+    $teknisi = userWithRole(Role::Teknisi);
+
+    $response = $this->actingAs($teknisi)->get(route('dashboard'));
+
+    $response->assertInertia(fn (Assert $page) => $page->where('auth.permissions', [
+        'customers.create',
+        'customers.view',
+        'packages.view',
+    ]));
+});
+
 it('membagikan semua permission untuk admin', function () {
     $admin = userWithRole(Role::Admin);
 

@@ -2,7 +2,7 @@
 
 Status: ⬜ belum · 🟨 sedang dikerjakan · ✅ selesai
 
-Tahap berikutnya: **F00** (design system & layout). Backend selesai; fase frontend membangun halaman React sesuai `docs/08-kontrak-halaman.md` (prompt di `prompts/F00-*.md` … `prompts/F09-*.md`).
+Tahap berikutnya: **F04** (pelanggan: detail & aksi). Backend selesai; fase frontend membangun halaman React sesuai `docs/08-kontrak-halaman.md` (prompt di `prompts/F00-*.md` … `prompts/F09-*.md`).
 
 ## Fase backend
 
@@ -25,10 +25,10 @@ Tahap berikutnya: **F00** (design system & layout). Backend selesai; fase fronte
 
 | Tahap | Nama | Status | Tanggal | Catatan |
 |---|---|---|---|---|
-| F00 | Design system & layout | ⬜ | | |
-| F01 | Dashboard | ⬜ | | |
-| F02 | Paket & router | ⬜ | | |
-| F03 | Pelanggan: daftar & form | ⬜ | | |
+| F00 | Design system & layout | ✅ | 2026-10-08 | Tema navy terang/gelap, Inter, sidebar per permission, `auth.user` eksplisit, tipe dari API Resource, `lib/format.ts`, 10 komponen bersama + 7 komponen shadcn; Pint, PHPStan, 1117 test, `types:check`, lint, dan build hijau (`npm run check` masih gagal di format markdown/JSON, lihat utang teknis) |
+| F01 | Dashboard | ✅ | 2026-10-08 | Dashboard per role (perlu perhatian, keuangan dengan waktu cache, pelanggan per status bertautan filter) dengan tipe `DashboardSummary`/`CustomerCounts` dan test bentuk props; Pint, PHPStan, 1117 test, `types:check`, dan build hijau (`npm run check` masih gagal di format markdown/JSON yang sama) |
+| F02 | Paket & router | ✅ | 2026-10-08 | Halaman paket (filter status, modal dengan input Rupiah) dan router (tes koneksi, password kosong = tidak diubah) dengan kartu HP, aksi per permission, dan dialog bersama per halaman; Pint, PHPStan, 1122 test, `types:check`, dan build hijau, diuji di browser (`npm run check` masih gagal di format markdown/JSON yang sama) |
+| F03 | Pelanggan: daftar & form | ✅ | 2026-10-08 | Daftar pelanggan (filter status/paket/router/galat router, kartu HP) dan form tambah/ubah satu kolom di HP dengan "Pakai lokasi saya" dan field koneksi terkunci di luar `pending`; Pint, PHPStan, 1126 test, `types:check`, dan build hijau, diuji di browser lebar desktop (360 px belum, lihat utang teknis; `npm run check` masih gagal di format markdown/JSON yang sama) |
 | F04 | Pelanggan: detail & aksi | ⬜ | | |
 | F05 | Tagihan | ⬜ | | |
 | F06 | Pembayaran | ⬜ | | |
@@ -160,6 +160,14 @@ Catat di sini setiap keputusan yang menyimpang dari `docs/` beserta alasannya.
 | 2026-10-07 | O4 Deploy di tempat dengan mode maintenance (±1–2 menit; webhook 503 ditutup retry Midtrans + rekonsiliasi), `optimize` sebelum `migrate`, reload PHP-FPM karena `opcache.validate_timestamps=0`; gagal = tetap maintenance. Default branch `master` | Sederhana untuk satu VPS; tanpa release symlink |
 | 2026-10-07 | O5 Nginx tanpa `trustProxies` (koneksi langsung, tanpa Cloudflare); `/webhooks/*` body 16 KB + `limit_req` 2 r/s per IP; halaman publik tanpa `limit_req` (S-3); query `/isolir` disamarkan dan referer tidak dicatat di access log (R-8); HSTS. `SESSION_DRIVER=database`, cache/queue Redis (`noeviction`, AOF) | Sisa risiko T-1, R-8, R-10 |
 | 2026-10-07 | O6 Backup `mysqldump --single-transaction` harian 03:30 dengan user baca-saja, simpan lokal 14 hari + offsite generik lewat `rclone` (`RCLONE_REMOTE`); `APP_KEY`/`.env` di-backup terpisah. CI dipindah ke `.github/workflows/backend.yml` di root repo (Pint, PHPStan, Pest + MySQL 8.4, setiap push/PR, tanpa `npm run check`); `backend/.github` dihapus dan dependabot dipindah ke root | `backend/.github` tidak pernah dibaca GitHub karena root repo adalah folder induk |
+| 2026-10-08 | F1 Nama ditulis **DinoTrack** (sesuai `APP_NAME` di `.env`/`.env.example`), bukan "dinoTrack" seperti brief awal; font Inter (angka tabular untuk kolom Rupiah); sidebar navy gelap varian `inset` | Keputusan pemilik di rencana F00 |
+| 2026-10-08 | F2 Komponen shadcn: registry kini menghasilkan paket gabungan `radix-ui` + paket `cn` dan CLI memakai pnpm (karena `pnpm-workspace.yaml`). Komponen tetap dibuat lewat CLI, lalu import diubah ke `@radix-ui/react-*` dan `@/lib/utils`; paket dipasang dengan npm, `package-lock.json` satu-satunya lockfile. Langkahnya di CLAUDE.md aturan frontend 1 | Konsisten dengan komponen starter kit; pin CLI 2.10.0 tidak membantu karena isi diambil dari registry online |
+| 2026-10-08 | F3 `auth.user` dibentuk eksplisit di `HandleInertiaRequests::userData()` (`id`, `name`, `email`, `role`, `role_label`, `email_verified_at`, `two_factor_enabled`), avatar dihapus (inisial saja). Toast diketik lewat `flashDataType` Inertia v3, bukan props bersama | Menutup G3 dan sebagian R-3; model mentah bisa ikut membawa relasi `roles` |
+| 2026-10-08 | F4 Token warna status semantik `success`/`warning`/`info` (+ `destructive`) di `app.css`; `StatusBadge` dan alert tidak memakai warna Tailwind langsung. Semua pasangan teks/latar dihitung ≥ 4.5:1 | Aturan frontend 1 (tanpa kode warna di komponen) |
+| 2026-10-08 | F6 Dashboard: bagian Pelanggan memakai `customer_counts` real-time untuk semua role (`summary.*_customers` tetap di kontrak tetapi tidak ditampilkan) dan menampilkan 4 status termasuk Berhenti; galat router dari `customer_counts` sehingga kasir/teknisi juga melihatnya; kartu "Jatuh tempo 7 hari" tanpa tautan; grid Keuangan 1/2/3 dan Pelanggan 2/2/4 (prompt menyebut 1/2/4) | Opsi Q1-a/Q2-a/Q3-a rencana F01: angka tidak tertinggal cache 5 menit; belum ada filter jatuh tempo di `/invoices`; 3 kartu keuangan tidak menyisakan slot kosong dan angka pelanggan pendek muat 2 kolom di 360 px |
+| 2026-10-08 | F5 Tanpa runner test JS: `lib/format.ts` diperiksa manual (16 kasus, dua zona waktu) + typecheck. `DataTable` tanpa TanStack Table (pengurutan/pagination di server); `Pagination` tidak memakai label backend yang berbahasa Inggris | Tidak menambah infrastruktur/paket di luar cakupan F00 |
+| 2026-10-08 | F7 Paket & router: tombol Hapus paket selalu tampil untuk `packages.manage` dan penolakan backend (`errors.package`/`errors.router`) tampil di dialog, karena `subscriptions_count` tidak menghitung `next_package_id` dan `customers_count` tidak menghitung pelanggan terhapus. Komponen bersama baru: `useDialogTarget` (satu modal/konfirmasi per halaman, `key` baru setiap dibuka), `RowActionButton` (ikon + tooltip di tabel, berlabel di kartu HP, 40 px), `RupiahInput` + `parseRupiahInput()` (nilai integer), `StatusBadge` `kind: 'active'`; `ConfirmDialog` mendukung mode terkontrol (`open`/`onOpenChange`, `trigger` opsional) dan tombol footer dialog 40 px. Modal ditaruh di `components/<modul>/` karena file di `pages/**` dianggap halaman. Halaman router tanpa pencarian/filter (tidak ada di kontrak) | Opsi Q1-a rencana F02: halaman tidak menebak aturan bisnis dari angka yang tidak lengkap; DataTable merender tabel dan kartu sekaligus sehingga form per baris akan berlipat ganda |
+| 2026-10-08 | F8 Pelanggan: form tambah/ubah memakai satu `CustomerForm` (`components/customers/`) dengan slot paket untuk form tambah; tanggal tagih dikosongkan di form tambah (wajib dipilih, docs/04 "bebas dari tanggal pasang"), router terpilih otomatis jika hanya ada satu router aktif. Form ubah mengunci router/username PPPoE/tanggal tagih di luar `pending` dan hanya mengirim `billing_day` selama `pending` (pelanggan berhenti tidak punya subscription aktif sehingga `UpdateCustomer` akan menolak nilai apa pun). WA di form ubah ditampilkan format lokal (`formatPhone`), dinormalisasi backend. Filter galat router berupa toggle (`network_error=1`). Daftar tanpa kolom aksi: kode/nama dan kartu HP menaut ke detail; tombol Ubah ada di detail (F04). Breadcrumb dinamis lewat callback `Page.layout = (props) => ...`. Tanpa stub `customers/show` | Opsi Q1-a/Q2-a rencana F03 |
 
 ## Utang teknis
 
@@ -168,7 +176,7 @@ Hal yang sengaja ditunda untuk dikerjakan nanti.
 - `IsolateOverdueCustomers` menghitung pelanggan yang di-dispatch, termasuk yang dilewati karena job unik masih antre; angka di output command bisa sedikit lebih besar dari job yang benar-benar masuk queue.
 - Uji manual ke Mikrotik CHR (tes koneksi, isolir, aktivasi, nonaktif secret) belum dilakukan; implementasi baru diuji dengan client palsu.
 - Test `TerminateCustomer` (Tahap 03) memakai `Queue::fake()` yang mengabaikan `afterCommit()`, sehingga belum membuktikan job tidak terkirim saat rollback; pola test dengan queue `sync` + `Queue::before()` ada di `ActivateNewCustomerTest`.
-- `npm run check` (vp) melaporkan format markdown di `docs/`, `prompts/`, `PROGRESS.md`, `MULAI-DI-SINI.md`, `pint.json` sejak sebelum Tahap 02; belum dirapikan.
+- `npm run check` (vp) gagal hanya karena format file non-kode (52 file: markdown di `docs/`, `prompts/`, `.claude/`, `AGENTS.md`, `CLAUDE.md`, `MULAI-DI-SINI.md`, `PROGRESS.md`, serta `pint.json`, `.mcp.json`, `.claude/settings.json`); kode TS/TSX/CSS bersih dan lint lolos. Dirapikan di F09 (opsi a saat menutup F00).
 - Status pengiriman akhir Fonnte (terkirim/gagal di sisi WhatsApp) hanya tersedia lewat webhook Fonnte; v1 menganggap `status: true` (masuk antrean Fonnte) sebagai `sent`.
 - Pesan ganda masih mungkin jika request ke Fonnte timeout setelah pesan diterima lalu job mencoba ulang (risiko diterima, lihat W6).
 - Uji manual ke Fonnte sungguhan dan tampilan halaman tagihan di HP (QR Midtrans sandbox, polling) belum dilakukan; implementasi baru diuji dengan fake.
@@ -184,7 +192,15 @@ Hal yang sengaja ditunda untuk dikerjakan nanti.
 - S-3 (audit): rate limit `/isolir` dan halaman tagihan per IP bisa dipakai bersama seluruh pelanggan di balik NAT ISP; perlu keputusan (allowlist IP NAT di `.env`, naikkan batas, atau terima).
 - S-4 (audit, sisa): `billing:health` sudah mencatat kegagalan ke log; indikator di dashboard admin (WA gagal, notifikasi pembayaran tertahan, `failed_jobs`) dan alert WA ke admin belum ada. Rekonsiliasi pembayaran yang gagal masih hanya di log.
 - Deploy (Tahap 11): konfigurasi `deploy/` dan `docs/10-deploy.md` belum diuji di VPS sungguhan; `shellcheck` tidak tersedia di mesin pengembang (hanya `bash -n`); workflow CI baru berjalan setelah di-push. Bit executable script tidak tercatat dari Windows, sehingga script dipanggil lewat `bash`.
-- R-3/R-5 (audit, fase frontend): `auth.user` dibentuk minimal; pertimbangkan 2FA wajib untuk admin; pasang CSP setelah skrip inline halaman publik dipindah.
+- R-3/R-5 (audit, fase frontend): `auth.user` sudah minimal (F00); sisa: pertimbangkan 2FA wajib untuk admin, pasang CSP setelah skrip inline halaman publik dipindah.
 - R-6/R-7 (audit): lock charge QRIS 60 s bisa habis pada panggilan gateway beruntun; panggilan router sinkron (status koneksi, tes koneksi) belum di-throttle.
 - R-11 (audit): `npm audit` dev melaporkan `tinypool` lewat `vite-plus` 0.3.0; naikkan ke ≥0.3.3 saat fase frontend.
 - Test yang belum ada (docs/09 butir 9): QRIS untuk invoice pelanggan `terminated`, limit `/isolir` dan halaman tagihan per IP, pengingat terlewat tidak dikirim belakangan, isolir ulang tanpa pesan kedua.
+- `public/favicon.ico` dan `public/apple-touch-icon.png` masih logo Laravel karena ImageMagick tidak tersedia; hanya `favicon.svg` yang sudah logo DinoTrack (F09).
+- Teks bahasa Inggris di halaman auth dan settings bawaan starter kit (login, profil, keamanan, tampilan) serta `sr-only` "Toggle sidebar" di `components/ui/sidebar.tsx` dan "Close" di `components/ui/dialog.tsx` belum diterjemahkan (F09, sesuai keputusan F00).
+- Filter jatuh tempo (misalnya `due_within=7`) di `/invoices` belum ada; tambahkan di F05 lalu tautkan kartu "Jatuh tempo 7 hari" di dashboard.
+- Tautan kartu dashboard menuju halaman yang baru dibuat di F06 (pembayaran) dan F07 (laporan); sebelum itu tautan membuka halaman yang belum ada. Tampilan dashboard di 360 px belum diperiksa di browser.
+- `app-header.tsx` dan `layouts/app/app-header-layout.tsx` tidak dipakai (layout sidebar), hanya disesuaikan agar lolos typecheck; hapus di F09.
+- F03: tautan ke detail pelanggan dan redirect setelah simpan menuju `customers/show` yang baru dibuat di F04 (opsi Q1-a, tanpa stub); alur simpan pelanggan baru belum dicoba di browser.
+- F03: halaman pelanggan (daftar, tambah, ubah) belum diperiksa di browser pada lebar 360 px; jendela Chrome tidak bisa diperkecil dari 1536 px dan iframe ditolak `X-Frame-Options`. Periksa lewat DevTools mode perangkat (bersama dashboard) di F04 atau F09. "Pakai lokasi saya" belum dicoba di HP lewat HTTPS.
+- Database development sempat tanpa data permission (tabel `permissions` kosong, teknisi/kasir 403); sudah diisi ulang dengan `RolePermissionSeeder` saat F03. Jalankan seeder itu lagi setelah `migrate:fresh` tanpa `--seed`.

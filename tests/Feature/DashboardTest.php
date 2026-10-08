@@ -22,7 +22,7 @@ test('authenticated users can visit the dashboard', function () {
 
     $response->assertOk();
     $response->assertInertia(fn (Assert $page) => $page
-        ->component('dashboard')
+        ->component('dashboard', true)
         ->where('summary', null)
         ->where('customer_counts', null));
 });
@@ -35,9 +35,24 @@ it('menampilkan ringkasan keuangan hanya untuk admin', function () {
     $this->actingAs(userWithRole(Role::Admin))
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
-            ->has('summary.revenue_this_month')
-            ->has('summary.customers_with_network_error')
-            ->has('customer_counts'));
+            ->component('dashboard', true)
+            ->has('summary', fn (Assert $summary) => $summary
+                ->whereAllType([
+                    'revenue_this_month' => 'integer',
+                    'payments_this_month' => 'integer',
+                    'outstanding_amount' => 'integer',
+                    'outstanding_invoices' => 'integer',
+                    'active_customers' => 'integer',
+                    'isolated_customers' => 'integer',
+                    'pending_customers' => 'integer',
+                    'due_this_week_amount' => 'integer',
+                    'due_this_week_invoices' => 'integer',
+                    'payments_needing_review' => 'integer',
+                    'payments_needing_review_amount' => 'integer',
+                    'customers_with_network_error' => 'integer',
+                    'generated_at' => 'string',
+                ]))
+            ->has('customer_counts', 5));
 });
 
 it('menampilkan jumlah pelanggan per status tanpa ringkasan keuangan untuk kasir dan teknisi', function (Role $role) {
@@ -48,6 +63,7 @@ it('menampilkan jumlah pelanggan per status tanpa ringkasan keuangan untuk kasir
     $this->actingAs(userWithRole($role))
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
+            ->component('dashboard', true)
             ->where('summary', null)
             ->where('customer_counts', [
                 'pending' => 1,

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Role;
 use App\Models\Package;
 use App\Models\Subscription;
+use Illuminate\Support\Collection;
 use Inertia\Testing\AssertableInertia as Assert;
 
 it('menampilkan daftar paket dengan pencarian dan jumlah pemakai', function () {
@@ -16,13 +17,59 @@ it('menampilkan daftar paket dengan pencarian dan jumlah pemakai', function () {
         ->get(route('packages.index', ['search' => 'home']))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('packages/index')
+            ->component('packages/index', true)
             ->has('packages.data', 1, fn (Assert $package) => $package
                 ->where('name', 'Home 20 Mbps')
                 ->where('subscriptions_count', 2)
                 ->etc())
             ->where('packages.meta.total', 1)
             ->where('filters', ['search' => 'home']));
+});
+
+it('membuka halaman paket untuk semua role dengan permission kelola hanya untuk admin', function (Role $role, bool $canManage) {
+    Package::factory()->create();
+
+    $this->actingAs(userWithRole($role))
+        ->get(route('packages.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('packages/index', true)
+            ->has('packages.data', 1)
+            ->where('filters', [])
+            ->where('auth.permissions', fn (Collection $permissions) => $permissions->contains('packages.manage') === $canManage));
+})->with([
+    'admin' => [Role::Admin, true],
+    'kasir' => [Role::Kasir, false],
+    'teknisi' => [Role::Teknisi, false],
+]);
+
+it('menyaring paket menurut status aktif dan mengembalikan filternya', function () {
+    Package::factory()->create(['name' => 'Paket Aktif']);
+    Package::factory()->inactive()->create(['name' => 'Paket Lama']);
+
+    $this->actingAs(userWithRole(Role::Kasir))
+        ->get(route('packages.index', ['is_active' => '0']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('packages/index', true)
+            ->has('packages.data', 1, fn (Assert $package) => $package
+                ->where('name', 'Paket Lama')
+                ->where('is_active', false)
+                ->etc())
+            ->where('filters', ['is_active' => '0']));
+});
+
+it('mengirim daftar berhalaman dengan bentuk data, links, dan meta untuk frontend', function () {
+    Package::factory()->count(3)->create();
+
+    $response = $this->actingAs(userWithRole(Role::Teknisi))->get(route('packages.index', ['per_page' => 10]));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->has('packages', fn (Assert $packages) => $packages
+            ->has('data', 3)
+            ->has('links', fn (Assert $links) => $links->hasAll(['first', 'last', 'prev', 'next']))
+            ->has('meta', fn (Assert $meta) => $meta
+                ->hasAll(['current_page', 'from', 'last_page', 'path', 'per_page', 'to', 'total'])
+                ->has('links.0', fn (Assert $link) => $link->hasAll(['url', 'label', 'page', 'active'])))));
 });
 
 it('admin menambah paket dengan harga integer', function () {
