@@ -46,6 +46,11 @@ const numberFormatter = new Intl.NumberFormat('id-ID', {
     maximumFractionDigits: 0,
 });
 
+const compactNumberFormatter = new Intl.NumberFormat('id-ID', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+});
+
 const jakartaParts = new Intl.DateTimeFormat('en-GB', {
     timeZone: TIME_ZONE,
     year: 'numeric',
@@ -72,6 +77,13 @@ export function formatNumber(value: number): string {
 /** Integer rupiah → `Rp150.000` (negatif: `-Rp150.000`). */
 export function formatRupiah(amount: number): string {
     const formatted = `Rp${numberFormatter.format(Math.abs(amount))}`;
+
+    return amount < 0 ? `-${formatted}` : formatted;
+}
+
+/** Integer rupiah ringkas untuk sumbu grafik → `Rp250 rb`, `Rp1,5 jt`, `Rp2 M`. */
+export function formatRupiahCompact(amount: number): string {
+    const formatted = `Rp${compactNumberFormatter.format(Math.abs(amount))}`;
 
     return amount < 0 ? `-${formatted}` : formatted;
 }

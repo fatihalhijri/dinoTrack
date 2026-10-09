@@ -320,8 +320,11 @@ Aksi: `PUT /settings/message-templates/{id}` (`body`, `is_active`).
 | `revenue` | `{ month (1–12), by_method: { qris, cash, transfer }, total, payment_count }[]` (12 bulan) |
 | `aging` | `{ bucket: '0-7'\|'8-30'\|'31+', label, invoice_count, amount }[]` |
 | `movement` | `{ from, to, new_customers, terminated_customers, isolated_customers }` |
+| `methods` | `{ value: PaymentMethod, label }[]` — label seri grafik dan kolom tabel pendapatan (urutan `qris`, `cash`, `transfer`) |
 
-Query: `year`, `from`, `to`. Unduhan CSV (UTF-8 BOM, pemisah `;`):
+Query: `year`, `from`, `to`. Halaman memuat ulang sebagian (`only`) saat tahun atau periode
+berubah. Unduhan CSV berupa tautan biasa (bukan kunjungan Inertia); rincian pembayaran memakai
+periode `from`/`to` halaman. Unduhan CSV (UTF-8 BOM, pemisah `;`):
 `GET /reports/export/payments?from=&to=` (wajib), `GET /reports/export/outstanding`,
 `GET /reports/export/revenue?year=`.
 
@@ -329,7 +332,7 @@ Query: `year`, `from`, `to`. Unduhan CSV (UTF-8 BOM, pemisah `;`):
 
 | Prop | Tipe |
 |---|---|
-| `invoices` | Paginated\<{ id, number, customer_id, customer_code, customer_name, customer_status, due_at, age_days, total, status }\> (paling lama dulu) |
+| `invoices` | Paginated\<OutstandingInvoice\> (paling lama dulu): `{ id, number, customer_id, customer_code, customer_name, customer_status, customer_status_label, due_at, age_days, total, status, status_label }` dari `OutstandingInvoiceResource` (bentuk `data`/`links`/`meta` seperti daftar lain) |
 | `filters` | `{ search?, per_page? }` |
 
 ### Halaman bawaan starter kit (tidak berubah)

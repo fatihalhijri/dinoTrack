@@ -6,8 +6,9 @@ namespace App\Http\Controllers;
 
 use App\Data\Reports\AgingBucketTotal;
 use App\Data\Reports\MonthlyRevenue;
+use App\Enums\PaymentMethod;
 use App\Http\Requests\Reports\ReportRequest;
-use App\Models\Invoice;
+use App\Http\Resources\OutstandingInvoiceResource;
 use App\Services\Reports\ReportService;
 use App\Support\SearchTerm;
 use Illuminate\Database\Eloquent\Builder;
@@ -28,6 +29,7 @@ class ReportController extends Controller
             'revenue' => array_map(fn (MonthlyRevenue $month): array => $month->toArray(), $reports->revenueByMonth($request->year())),
             'aging' => array_map(fn (AgingBucketTotal $bucket): array => $bucket->toArray(), $reports->outstandingAging()),
             'movement' => $reports->customerMovement($request->from(), $request->to())->toArray(),
+            'methods' => array_map(fn (PaymentMethod $method): array => ['value' => $method->value, 'label' => $method->label()], PaymentMethod::cases()),
         ]);
     }
 
@@ -45,22 +47,10 @@ class ReportController extends Controller
                     ->orWhere('customers.name', 'like', $pattern);
             }))
             ->paginate($request->perPage())
-            ->withQueryString()
-            ->through(fn (Invoice $invoice): array => [
-                'id' => $invoice->id,
-                'number' => $invoice->number,
-                'customer_id' => $invoice->customer_id,
-                'customer_code' => $invoice->getAttribute('customer_code'),
-                'customer_name' => $invoice->getAttribute('customer_name'),
-                'customer_status' => $invoice->getAttribute('customer_status'),
-                'due_at' => $invoice->due_at->toDateString(),
-                'age_days' => (int) $invoice->getAttribute('age_days'),
-                'total' => $invoice->total,
-                'status' => $invoice->status->value,
-            ]);
+            ->withQueryString();
 
         return Inertia::render('reports/outstanding', [
-            'invoices' => $invoices,
+            'invoices' => OutstandingInvoiceResource::collection($invoices),
             'filters' => $request->safe()->only(['search', 'per_page']),
         ]);
     }
