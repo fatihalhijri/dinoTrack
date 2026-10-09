@@ -6,6 +6,10 @@ props adalah controller dan API Resource di `app/Http/Resources`; test di
 `tests/Feature/Http` memeriksa props ini. Jika kode dan dokumen ini berbeda,
 perbarui dokumen ini.
 
+Status: **final** untuk v1 (F09, 2026-10-09). Semua halaman di bawah sudah ada dan
+`inertia.testing.ensure_pages_exist` menyala, sehingga setiap `assertInertia()->component()`
+juga memastikan file halamannya ada.
+
 ## Konvensi umum
 
 - **Uang**: integer rupiah (`150000`). Format tampilan di frontend (`Rp150.000`)
@@ -343,11 +347,36 @@ periode `from`/`to` halaman. Unduhan CSV (UTF-8 BOM, pemisah `;`):
 | `invoices` | Paginated\<OutstandingInvoice\> (paling lama dulu): `{ id, number, customer_id, customer_code, customer_name, customer_status, customer_status_label, due_at, age_days, total, status, status_label }` dari `OutstandingInvoiceResource` (bentuk `data`/`links`/`meta` seperti daftar lain) |
 | `filters` | `{ search?, per_page? }` |
 
-### Halaman bawaan starter kit (tidak berubah)
+### Beranda — `GET /`
 
-`welcome`, `auth/*`, `settings/profile`, `settings/security`,
-`settings/appearance`. Halaman login menampilkan `status` (misalnya pesan akun
-dinonaktifkan).
+Tanpa halaman: dialihkan ke `/dashboard` (route `home`), sehingga tamu berakhir di halaman
+login lewat middleware `auth`. Halaman `welcome` starter kit sudah dihapus (F09).
+
+### `errors/error` — respons error halaman admin
+
+| Prop | Tipe | Keterangan |
+|---|---|---|
+| `status` | number | `403`, `404`, `419`, `429`, `500`, `503` |
+
+Dirender `AppServiceProvider::configureErrorPages()` (`Inertia::handleExceptionsUsing`) dengan
+props bersama, tanpa layout aplikasi: 404 untuk URL yang tidak cocok dengan route mana pun terjadi
+sebelum session dibaca sehingga `auth.user` bisa `null` walaupun user sudah login. Aturan:
+
+- Request Inertia yang kena **419/429** tidak ditampilkan di halaman ini, melainkan dikembalikan
+  ke halaman asal (303) dengan `flash.toast` `warning` (memuat ulang URL POST di halaman error
+  hanya berakhir 405).
+- **500/503** hanya dirender saat `app.debug = false`; saat debug halaman debug Laravel tetap tampil.
+- Tidak dipakai untuk route tanpa grup `web` (halaman publik, webhook), request JSON, dan mode
+  maintenance (`resources/views/errors/503.blade.php`, tanpa Vite dan database karena aset
+  dibangun ulang selama deploy).
+
+Test: `tests/Feature/Http/ErrorPageTest.php`.
+
+### Halaman bawaan starter kit
+
+`auth/*`, `settings/profile`, `settings/security`, `settings/appearance`; teksnya
+diterjemahkan ke Bahasa Indonesia (F09), pesan backend lewat `lang/id/{auth,passwords}.php` dan
+`lang/id.json`. Halaman login menampilkan `status` (misalnya pesan akun dinonaktifkan).
 
 ### Halaman publik (Blade, bukan Inertia)
 

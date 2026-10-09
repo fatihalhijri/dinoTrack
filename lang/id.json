@@ -1,0 +1,10 @@
+{
+    "Invalid credential format.": "Format kredensial tidak valid.",
+    "Passkey registration session expired. Please try again.": "Sesi pendaftaran passkey kedaluwarsa. Silakan coba lagi.",
+    "Passkey verification session expired. Please try again.": "Sesi verifikasi passkey kedaluwarsa. Silakan coba lagi.",
+    "Password updated.": "Password berhasil diubah.",
+    "Profile updated.": "Profil berhasil diperbarui.",
+    "The provided password was incorrect.": "Password yang dimasukkan salah.",
+    "The provided two factor authentication code was invalid.": "Kode autentikasi dua faktor tidak valid.",
+    "The provided two factor recovery code was invalid.": "Kode pemulihan dua faktor tidak valid."
+}

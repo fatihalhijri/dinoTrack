@@ -63,7 +63,7 @@ jobs:
         run: npm ci
 
       - name: Generate Wayfinder routes
-        run: php artisan wayfinder:generate
+        run: php artisan wayfinder:generate --with-form
 
       - name: Lint (Pint)
         run: composer lint
@@ -73,6 +73,12 @@ jobs:
 
       - name: Test (Pest)
         run: composer test
+
+      - name: Typecheck (TypeScript)
+        run: npm run types:check
+
+      - name: Lint dan format frontend (vp check)
+        run: npm run check
 
       - name: Build
         run: npm run build

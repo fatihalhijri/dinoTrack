@@ -21,7 +21,8 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 
-Route::inertia('/', 'welcome')->name('home');
+// Tanpa halaman beranda; tamu diteruskan ke login oleh middleware auth di dashboard.
+Route::redirect('/', '/dashboard')->name('home');
 
 // Halaman admin. Middleware permission menjaga akses dasar tiap modul; aksi yang lebih spesifik
 // dicek Policy lewat Form Request atau Gate::authorize, dan syarat status data di Action.

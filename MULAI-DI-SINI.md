@@ -1,32 +1,35 @@
-# Starter Kit Pengembangan Backend — Billing Internet ISP
+# Starter Kit Pengembangan — Billing Internet ISP (DinoTrack)
 
-Folder ini berisi semua yang dibutuhkan Claude Code untuk membangun backend
-aplikasi billing internet secara bertahap, terarah, dan bisa diuji.
+Folder ini berisi semua yang dibutuhkan Claude Code untuk membangun aplikasi
+billing internet secara bertahap, terarah, dan bisa diuji: fase backend
+(Tahap 00–11) lalu fase frontend React (Tahap F00–F09).
 
-Isi kit ini **digabungkan ke dalam proyek Laravel**, bukan proyek terpisah.
+> **Status (2026-10-09):** kedua fase sudah selesai; kemajuan dan sisa utang
+> teknis ada di `PROGRESS.md`. Aplikasi kini berada di root repo (bukan folder
+> `backend/` seperti di langkah awal di bawah). Untuk menjalankan dari clone:
+> `composer install`, `npm ci`, salin `.env.example` ke `.env` lalu
+> `php artisan key:generate`, `php artisan migrate --seed`,
+> `php artisan storage:link`, dan `composer run dev`. Deploy: `docs/10-deploy.md`.
+
+Langkah 1–5 di bawah adalah catatan cara proyek ini dimulai.
 
 ---
 
 ## Isi folder
 
 ```
-backend/
+dinoTrack/                    ← root repo = aplikasi Laravel
 ├── MULAI-DI-SINI.md          ← file ini (panduan pemakaian)
 ├── CLAUDE.md                 ← "otak" proyek, dibaca otomatis oleh Claude Code
 ├── PROGRESS.md               ← checklist kemajuan per tahap
 ├── docs/                     ← spesifikasi proyek (sumber kebenaran)
-│   ├── 01-spesifikasi-produk.md
-│   ├── 02-arsitektur.md
-│   ├── 03-database.md
-│   ├── 04-aturan-bisnis.md
-│   ├── 05-integrasi.md
-│   ├── 06-standar-kode.md
-│   └── 07-definition-of-done.md
+│   ├── 01-spesifikasi-produk.md … 07-definition-of-done.md
+│   ├── 08-kontrak-halaman.md   ← kontrak props halaman Inertia (fase frontend)
+│   ├── 09-audit-keamanan.md
+│   └── 10-deploy.md
 ├── prompts/                  ← prompt siap pakai, satu file per tahap
-│   ├── 00-setup-proyek.md
-│   ├── 01-database-dan-model.md
-│   ├── ...
-│   └── 11-kesiapan-deploy.md
+│   ├── 00-setup-proyek.md … 11-kesiapan-deploy.md   (backend)
+│   └── F00-design-system-dan-layout.md … F09-poles-akhir.md   (frontend)
 └── .claude/
     ├── settings.json         ← izin perintah untuk Claude Code
     └── commands/             ← perintah khusus: /tahap, /cek, /review, /selesai

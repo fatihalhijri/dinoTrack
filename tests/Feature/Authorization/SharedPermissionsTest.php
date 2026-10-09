@@ -44,7 +44,7 @@ it('membagikan semua permission untuk admin', function () {
 });
 
 it('tidak membagikan permission untuk tamu', function () {
-    $response = $this->get(route('home'));
+    $response = $this->get(route('login'));
 
     $response->assertInertia(fn (Assert $page) => $page->where('auth.permissions', []));
 });

@@ -3,7 +3,7 @@ import type { AuthUser } from '@/types';
 
 /**
  * User login untuk komponen di dalam layout yang membutuhkan login.
- * Halaman tamu (welcome, auth) membaca `auth.user` langsung karena bisa null.
+ * Halaman tamu (auth, errors) membaca `auth.user` langsung karena bisa null.
  */
 export function useAuthUser(): AuthUser {
     const { auth } = usePage().props;
