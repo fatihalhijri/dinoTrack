@@ -218,6 +218,7 @@ php artisan key:generate
 npm ci && npm run build
 php artisan migrate --force
 php artisan db:seed --force      # di production hanya seeder esensial (docs/03), tanpa DemoSeeder
+php artisan storage:link         # public/storage -> storage/app/public (logo usaha)
 php artisan optimize
 ```
 
@@ -244,7 +245,8 @@ Urutan `deploy.sh`:
 3. `php artisan down --retry=60 --refresh=15`.
 4. `git merge --ff-only origin/master` (branch lewat `DEPLOY_BRANCH`).
 5. `composer install --no-dev --optimize-autoloader`.
-6. `npm ci && npm run build`.
+6. `npm ci && npm run build`, lalu `php artisan storage:link` (aman diulang; link yang sudah ada
+   dilewati).
 7. `php artisan optimize` (cache config, event, route, view), dibuat **sebelum** migrate agar
    migrate memakai konfigurasi versi baru.
 8. `php artisan migrate --force`.
@@ -323,6 +325,11 @@ admin dan notifikasi WA ke admin ditunda (utang teknis).
 **`APP_KEY` dan `.env`.** Simpan salinan `.env` di password manager pemilik usaha, terpisah dari
 backup database. Tanpa `APP_KEY` yang sama, password router (kolom terenkripsi) tidak bisa dibaca
 dan semua link tagihan yang sudah terkirim ke pelanggan tidak berlaku lagi.
+
+**Logo usaha.** File unggahan ada di `storage/app/public/business` (path-nya di tabel `settings`).
+Ikut sertakan folder `storage/app/public` di backup offsite, misalnya
+`rclone sync /var/www/dinotrack/storage/app/public offsite:dinotrack-files`. Jika hilang, cukup
+unggah ulang logo dari halaman Profil usaha.
 
 Redis tidak di-backup: isinya job antre dan cache yang bisa dibuat ulang (invoice dan pembayaran
 ada di MySQL, rekonsiliasi dan catch-up menutup celahnya).

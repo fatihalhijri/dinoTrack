@@ -30,6 +30,7 @@ use App\Services\Payment\MidtransPaymentGateway;
 use App\Support\SettingsRepository;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Http\Request;
@@ -39,6 +40,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use InvalidArgumentException;
@@ -82,6 +84,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureAuthorization();
         $this->configureRateLimiting();
         $this->configureHealthCheck();
+        $this->configurePublicViews();
     }
 
     /**
@@ -89,6 +92,17 @@ class AppServiceProvider extends ServiceProvider
      * pemantauan eksternal tahu aplikasi mati walaupun PHP masih berjalan. Router tidak dicek di
      * sini karena lambat; pemeriksaan lengkap ada di `billing:health`.
      */
+    /**
+     * Logo usaha untuk layout halaman publik (tagihan, isolir, link tidak valid), agar
+     * setiap controller dan handler 403 tidak perlu mengirimnya sendiri.
+     */
+    protected function configurePublicViews(): void
+    {
+        View::composer('public.layout', function (ViewContract $view): void {
+            $view->with('businessLogoUrl', $this->app->make(SettingsRepository::class)->businessLogoUrl());
+        });
+    }
+
     protected function configureHealthCheck(): void
     {
         Event::listen(DiagnosingHealth::class, function (): void {

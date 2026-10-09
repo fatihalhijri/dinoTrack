@@ -30,7 +30,8 @@ app/
 │   │                        IsolateOverdueCustomers, IsolateCustomerManually, ActivateCustomerManually
 │   ├── Notifications/       NotifyCustomer, SendInvoiceReminders
 │   ├── Users/               CreateUser, UpdateUser, DeactivateUser, ReactivateUser, DeleteUser
-│   └── Settings/            UpdateBusinessProfile, UpdateBillingSettings, UpdateMessageTemplate
+│   └── Settings/            UpdateBusinessProfile, UploadBusinessLogo, RemoveBusinessLogo,
+│                            UpdateBillingSettings, UpdateMessageTemplate
 ├── Contracts/               Interface integrasi
 │   ├── PaymentGateway.php
 │   ├── NetworkController.php
@@ -206,8 +207,9 @@ berjalan di queue `sync` tidak pernah menghubungi layanan sungguhan; test yang
 memeriksa panggilan memakai helper `fakeNetwork()` / `fakeMessages()`. Test
 mematikan rate limit WhatsApp (`WHATSAPP_SECONDS_PER_MESSAGE=0` di
 `phpunit.xml`) karena queue `sync` membuang job yang ditahan. `Tests\TestCase` juga
-memanggil `withoutVite()`, dan `inertia.testing.ensure_pages_exist` dimatikan selama fase
-backend (halaman React belum ada; nyalakan lagi di fase frontend).
+memanggil `withoutVite()`. `inertia.testing.ensure_pages_exist` menyala sejak F08 (dimatikan
+selama fase backend karena halaman React belum ada), sehingga setiap `assertInertia()->component()`
+juga memastikan file halamannya ada.
 
 ## Jadwal (routes/console.php)
 

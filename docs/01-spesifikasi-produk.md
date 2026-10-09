@@ -129,7 +129,7 @@ agar tetap berlaku untuk admin.
   melihat jumlah pelanggan per status dan pelanggan dengan galat router
 
 ### 12. Pengaturan
-- Profil usaha (nama, alamat, logo, nomor WA admin); logo menyusul di fase frontend
+- Profil usaha (nama, alamat, logo, nomor WA admin); logo PNG/JPG/WebP maks 1 MB tampil di halaman publik
 - Aturan tagihan (lihat `docs/04-aturan-bisnis.md`)
 - Template pesan WhatsApp
 

@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import FormErrorAlert from '@/components/form-error-alert';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
+import SwitchField from '@/components/switch-field';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -16,7 +17,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { Switch } from '@/components/ui/switch';
+
 import { store, update } from '@/routes/routers';
 import type { Router } from '@/types';
 
@@ -303,42 +304,5 @@ export default function RouterFormDialog({
                 </form>
             </DialogContent>
         </Dialog>
-    );
-}
-
-function SwitchField({
-    id,
-    label,
-    description,
-    checked,
-    onCheckedChange,
-    error,
-}: {
-    id: string;
-    label: string;
-    description?: string;
-    checked: boolean;
-    onCheckedChange: (checked: boolean) => void;
-    error?: string;
-}) {
-    return (
-        <div className="grid gap-1">
-            <div className="flex min-h-10 items-center justify-between gap-4">
-                <div className="grid gap-0.5">
-                    <Label htmlFor={id}>{label}</Label>
-                    {description ? (
-                        <p className="text-xs text-muted-foreground">
-                            {description}
-                        </p>
-                    ) : null}
-                </div>
-                <Switch
-                    id={id}
-                    checked={checked}
-                    onCheckedChange={onCheckedChange}
-                />
-            </div>
-            <InputError message={error} />
-        </div>
     );
 }

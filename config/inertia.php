@@ -65,9 +65,8 @@ return [
 
     'testing' => [
 
-        // Fase backend: halaman React belum dibuat (kontrak di docs/08-kontrak-halaman.md).
-        // Nyalakan lagi saat fase frontend dimulai.
-        'ensure_pages_exist' => false,
+        // Setiap assertInertia()->component() memastikan file halaman di resources/js/pages ada.
+        'ensure_pages_exist' => true,
 
     ],
 

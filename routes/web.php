@@ -77,6 +77,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->group(function () {
             Route::get('business', [BusinessSettingsController::class, 'edit'])->name('business.edit');
             Route::put('business', [BusinessSettingsController::class, 'update'])->name('business.update');
+            Route::post('business/logo', [BusinessSettingsController::class, 'storeLogo'])->name('business.logo.store');
+            Route::delete('business/logo', [BusinessSettingsController::class, 'destroyLogo'])->name('business.logo.destroy');
             Route::get('billing', [BillingSettingsController::class, 'edit'])->name('billing.edit');
             Route::put('billing', [BillingSettingsController::class, 'update'])->name('billing.update');
             Route::get('message-templates', [MessageTemplateController::class, 'index'])->name('message-templates.index');

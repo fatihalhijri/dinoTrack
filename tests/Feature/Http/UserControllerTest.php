@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Enums\Role;
+use App\Models\ActivityLog;
+use App\Models\Payment;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -14,7 +16,7 @@ it('menampilkan daftar user tanpa data rahasia akun', function () {
 
     $response->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('users/index')
+            ->component('users/index', true)
             ->has('users.data', 1, fn (Assert $user) => $user
                 ->where('name', 'Kasir Satu')
                 ->where('role', 'kasir')
@@ -86,4 +88,23 @@ it('menampilkan penolakan saat admin menghapus akunnya sendiri', function () {
         ->assertSessionHasErrors(['user' => 'Anda tidak bisa menghapus akun sendiri.']);
 
     $this->assertModelExists($admin);
+});
+
+it('menandai hanya akun tanpa jejak audit sebagai bisa dihapus', function () {
+    $admin = userWithRole(Role::Admin);
+    $unused = User::factory()->create()->assignRole(Role::Teknisi);
+    $withActivity = User::factory()->create()->assignRole(Role::Kasir);
+    ActivityLog::factory()->create(['user_id' => $withActivity->id]);
+    $withPayment = User::factory()->create()->assignRole(Role::Kasir);
+    Payment::factory()->cash()->create(['received_by' => $withPayment->id]);
+
+    $this->actingAs($admin)
+        ->get(route('users.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('users.data', fn ($users): bool => collect($users)->pluck('can_delete', 'id')->all() == [
+                $admin->id => true,
+                $unused->id => true,
+                $withActivity->id => false,
+                $withPayment->id => false,
+            ]));
 });

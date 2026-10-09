@@ -203,6 +203,8 @@ export type User = {
     is_active: boolean;
     deactivated_at: string | null;
     created_at: string | null;
+    /** Hanya di `users/index`: akun belum punya jejak audit (pembayaran yang dicatat, activity log). */
+    can_delete?: boolean;
 };
 
 export type MessageTemplate = {
@@ -254,6 +256,23 @@ export type BusinessIdentity = {
     name: string;
     address: string | null;
     whatsapp: string | null;
+};
+
+/** Isian profil usaha di `settings/business`; null = belum diisi. */
+export type BusinessProfile = {
+    name: string | null;
+    address: string | null;
+    whatsapp: string | null;
+};
+
+/** Aturan tagihan di `settings/billing` (docs/04 "Pengaturan default"). */
+export type BillingSettings = {
+    due_days: number;
+    grace_days: number;
+    reminder_days_before: number;
+    prorate_first_month: boolean;
+    auto_isolate: boolean;
+    auto_activate: boolean;
 };
 
 /** Pendapatan satu bulan (`App\Data\Reports\MonthlyRevenue`): pembayaran normal menurut `paid_at`. */

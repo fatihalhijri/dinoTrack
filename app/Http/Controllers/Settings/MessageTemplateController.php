@@ -11,6 +11,8 @@ use App\Http\Requests\Settings\UpdateMessageTemplateRequest;
 use App\Http\Resources\MessageTemplateResource;
 use App\Models\MessageTemplate;
 use App\Support\MessageTemplateRenderer;
+use App\Support\SettingsRepository;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -18,13 +20,14 @@ use Inertia\Response;
 
 class MessageTemplateController extends Controller
 {
-    public function index(): Response
+    public function index(MessageTemplateRenderer $renderer, SettingsRepository $settings): Response
     {
         Gate::authorize(Permission::SettingsManage->value);
 
         return Inertia::render('settings/message-templates', [
             'templates' => MessageTemplateResource::collection(MessageTemplate::query()->orderBy('id')->get()),
             'placeholders' => MessageTemplateRenderer::PLACEHOLDERS,
+            'placeholder_examples' => $renderer->examples(CarbonImmutable::today(), $settings->dueDays()),
             'max_length' => UpdateMessageTemplateRequest::MAX_BODY_LENGTH,
         ]);
     }
