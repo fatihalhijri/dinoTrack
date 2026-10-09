@@ -3,7 +3,7 @@
 # Deploy rutin DinoTrack di server production (docs/10-deploy.md).
 # Jalankan sebagai user aplikasi, bukan root:
 #
-#   sudo -iu dinotrack bash /var/www/dinotrack/backend/deploy/deploy.sh
+#   sudo -iu dinotrack bash /var/www/dinotrack/deploy/deploy.sh
 #
 # Variabel opsional: DEPLOY_BRANCH (default master), PHP_FPM_SERVICE (default php8.4-fpm).
 # Deploy pertama kali tidak memakai script ini; ikuti "Deploy pertama" di docs/10-deploy.md.

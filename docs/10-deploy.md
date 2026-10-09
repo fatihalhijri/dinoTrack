@@ -3,7 +3,7 @@
 Target: satu VPS **Ubuntu 24.04** dengan Nginx, PHP-FPM **8.4**, MySQL 8, Redis, Supervisor,
 dan HTTPS Let's Encrypt. Semua file konfigurasi ada di folder `deploy/`; dokumen ini menjelaskan
 urutan pemasangannya. Contoh memakai domain `billing.example.com`, user Linux `dinotrack`, dan
-folder `/var/www/dinotrack` (root repo git; aplikasi Laravel di `backend/`).
+folder `/var/www/dinotrack` (root repo git sekaligus folder aplikasi Laravel).
 
 > PHP 8.4, bukan 8.3 seperti prompt Tahap 11: `composer.lock` dan keputusan 2026-10-04 memakai
 > PHP 8.4, sedangkan Ubuntu 24.04 bawaannya 8.3. PHP 8.4 dipasang dari PPA `ondrej/php`.
@@ -99,7 +99,7 @@ server, sebaiknya lewat VPN (docs/05 "Persiapan di router").
 
 ## 2. Checklist `.env` production
 
-Salin `.env.example` menjadi `backend/.env` (`chmod 600`, pemilik `dinotrack`), lalu isi:
+Salin `.env.example` menjadi `.env` di `/var/www/dinotrack` (`chmod 600`, pemilik `dinotrack`), lalu isi:
 
 | Variabel | Nilai | Catatan |
 |---|---|---|
@@ -211,7 +211,7 @@ Sebagai user `dinotrack`:
 
 ```bash
 git clone https://github.com/<pemilik>/dinoTrack.git /var/www/dinotrack
-cd /var/www/dinotrack/backend
+cd /var/www/dinotrack
 cp .env.example .env && chmod 600 .env         # isi sesuai checklist bagian 2
 composer install --no-dev --optimize-autoloader --no-interaction
 php artisan key:generate
@@ -234,7 +234,7 @@ Router Mikrotik ditambahkan admin dari aplikasi, dan tes koneksinya dari sana.
 ## 7. Deploy rutin
 
 ```bash
-sudo -iu dinotrack bash /var/www/dinotrack/backend/deploy/deploy.sh
+sudo -iu dinotrack bash /var/www/dinotrack/deploy/deploy.sh
 ```
 
 Urutan `deploy.sh`:
@@ -265,7 +265,7 @@ overdue, isolir, pembersihan) dan sekitar **09:00** (pengingat).
 
 ```bash
 cd /var/www/dinotrack
-php backend/artisan down
+php artisan down
 git reset --hard <commit-lama>
 # lalu jalankan langkah 5–10 secara manual (composer, npm, optimize, reload, up, queue:restart)
 ```
