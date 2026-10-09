@@ -1,6 +1,6 @@
-# Pint, PHPStan, dan Pest untuk backend di setiap push dan pull request (backend/docs/10-deploy.md).
+# Lint, analisis statis, test, dan build di setiap push dan pull request (docs/10-deploy.md bagian 11).
 # Test memakai MySQL 8 (kolom generated dan lockForUpdate tidak bisa diuji dengan SQLite).
-name: backend
+name: ci
 
 on:
   push:
@@ -10,12 +10,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: backend-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
-
-defaults:
-  run:
-    working-directory: backend
 
 jobs:
   checks:
@@ -49,7 +45,13 @@ jobs:
           tools: composer:v2
           coverage: none
 
-      - name: Install dependencies
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Prepare environment
@@ -57,11 +59,20 @@ jobs:
           cp .env.example .env
           php artisan key:generate
 
-      - name: Pint
-        run: vendor/bin/pint --parallel --test
+      - name: Install npm dependencies
+        run: npm ci
 
-      - name: PHPStan
-        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+      - name: Generate Wayfinder routes
+        run: php artisan wayfinder:generate
 
-      - name: Pest
-        run: php artisan test --compact
+      - name: Lint (Pint)
+        run: composer lint
+
+      - name: Analyse (PHPStan)
+        run: composer analyse
+
+      - name: Test (Pest)
+        run: composer test
+
+      - name: Build
+        run: npm run build

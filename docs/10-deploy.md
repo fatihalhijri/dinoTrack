@@ -350,10 +350,13 @@ Pantau log harian dengan `tail -f storage/logs/laravel-$(date +%F).log` atau `ph
 
 ## 11. CI (GitHub Actions)
 
-`.github/workflows/backend.yml` **di root repo** (GitHub hanya membaca `.github/` di root; folder
-`backend/.github` sebelumnya tidak pernah berjalan) menjalankan, di setiap push dan pull request:
-Pint (`--test`), PHPStan, dan Pest dengan service MySQL 8.4 (`dinotrack_testing`). `npm run check`
-tidak dijalankan karena format markdown masih utang teknis. Dependabot (`.github/dependabot.yml`)
-memperbarui versi action mingguan.
+`.github/workflows/ci.yml` (GitHub hanya membaca `.github/` di root repo, tempat aplikasi berada)
+menjalankan, di setiap push dan pull request, dengan PHP 8.4 (`mbstring`, `pdo_mysql`, `sockets`),
+Node 22, dan service MySQL 8.4 (`dinotrack_testing`, sama dengan `phpunit.xml`):
+`composer install` → `.env` dari `.env.example` + `key:generate` → `npm ci` →
+`php artisan wayfinder:generate` (helper route TS tidak di-commit) → `composer lint` (Pint
+`--test`) → `composer analyse` (PHPStan) → `composer test` (Pest) → `npm run build`.
+`npm run check` tidak dijalankan karena format markdown masih utang teknis. Dependabot
+(`.github/dependabot.yml`) memperbarui versi action mingguan.
 
 Deploy tetap manual lewat `deploy.sh`; tidak ada deploy otomatis dari CI di v1.
