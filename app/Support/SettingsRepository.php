@@ -6,6 +6,7 @@ namespace App\Support;
 
 use App\Models\Setting;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Pengaturan dari tabel `settings` dengan nilai default dari docs/04. Disimpan di cache
@@ -29,6 +30,13 @@ final class SettingsRepository
         'billing.auto_isolate' => true,
         'billing.auto_activate' => true,
     ];
+
+    /** Path logo usaha relatif terhadap disk publik (diisi UploadBusinessLogo). */
+    public const string BUSINESS_LOGO_KEY = 'business.logo_path';
+
+    public const string BUSINESS_LOGO_DISK = 'public';
+
+    public const string BUSINESS_LOGO_DIRECTORY = 'business';
 
     private const string CACHE_KEY = 'settings';
 
@@ -108,5 +116,15 @@ final class SettingsRepository
         $phone = $this->get('business.whatsapp');
 
         return is_string($phone) && trim($phone) !== '' ? PhoneNumber::normalize($phone) : null;
+    }
+
+    /**
+     * URL publik logo usaha (lewat symlink `public/storage`); null jika belum diunggah.
+     */
+    public function businessLogoUrl(): ?string
+    {
+        $path = $this->get(self::BUSINESS_LOGO_KEY);
+
+        return is_string($path) && $path !== '' ? Storage::disk(self::BUSINESS_LOGO_DISK)->url($path) : null;
     }
 }

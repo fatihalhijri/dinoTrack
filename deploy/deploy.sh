@@ -59,6 +59,10 @@ log "Membangun aset frontend"
 npm ci --no-audit --no-fund
 npm run build
 
+# Logo usaha dilayani dari public/storage; perintah ini aman diulang (link yang ada dilewati).
+log "Memastikan symlink public/storage"
+php artisan storage:link
+
 # Cache dibuat ulang sebelum migrate agar migrate memakai konfigurasi versi baru.
 log "Membuat cache config, event, route, dan view"
 php artisan optimize

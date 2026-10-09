@@ -251,7 +251,8 @@ adalah kontrak: jangan diganti tanpa menyesuaikan `ReportService`.
 Diisi `SettingSeeder` dengan default `billing.*` dari `docs/04-aturan-bisnis.md`
 (nilai yang sudah diubah admin tidak ditimpa). `billing.penalty_amount` tidak
 di-seed karena denda tidak dipakai di v1. Profil usaha (`business.name`,
-`business.address`, `business.whatsapp`) diisi admin dan tidak di-seed; nilai
+`business.address`, `business.whatsapp`, `business.logo_path` = path di disk `public`) diisi
+admin dan tidak di-seed; nilai
 yang dikosongkan menghapus barisnya (kolom `value` NOT NULL).
 
 ### sequences

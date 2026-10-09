@@ -11,7 +11,8 @@
         *{box-sizing:border-box}
         body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#f4f5f7;color:#1f2933;line-height:1.5}
         main{max-width:480px;margin:0 auto;padding:24px 16px 40px}
-        .brand{font-size:.9rem;font-weight:600;color:#52606d;text-transform:uppercase;letter-spacing:.04em}
+        .brand{display:flex;align-items:center;gap:10px;font-size:.9rem;font-weight:600;color:#52606d;text-transform:uppercase;letter-spacing:.04em}
+        .brand-logo{display:block;max-height:40px;max-width:160px;width:auto;height:auto}
         h1{font-size:1.4rem;margin:8px 0 12px}
         .card{background:#fff;border-radius:12px;padding:18px;margin-top:16px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
         .card h2{font-size:1.05rem;margin:0 0 10px}
@@ -43,7 +44,12 @@
 </head>
 <body>
 <main>
-    <div class="brand">{{ $businessName }}</div>
+    <div class="brand">
+        @if (! empty($businessLogoUrl))
+            <img class="brand-logo" src="{{ $businessLogoUrl }}" alt="Logo {{ $businessName }}">
+        @endif
+        <span>{{ $businessName }}</span>
+    </div>
     @yield('content')
 </main>
 @stack('scripts')

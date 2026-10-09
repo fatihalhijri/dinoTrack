@@ -7,6 +7,8 @@ use App\Models\Customer;
 use App\Models\Setting;
 use App\Providers\AppServiceProvider;
 use App\Support\InvoicePaymentLink;
+use App\Support\SettingsRepository;
+use Illuminate\Support\Facades\Storage;
 
 function isolatedPageCustomer(): Customer
 {
@@ -96,4 +98,19 @@ it('menampilkan link bayar bertanda tangan untuk setiap tagihan yang belum dibay
     $this->get('/isolir?kode=PLG-000123&hp=7890')
         ->assertOk()
         ->assertSee(e(InvoicePaymentLink::for($overdue)), false);
+});
+
+it('menampilkan logo usaha di halaman publik jika sudah diunggah', function () {
+    Storage::fake('public');
+    Setting::factory()->create(['key' => SettingsRepository::BUSINESS_LOGO_KEY, 'value' => 'business/logo.png']);
+
+    $this->get('/isolir')
+        ->assertOk()
+        ->assertSee('src="'.Storage::disk('public')->url('business/logo.png').'"', false);
+});
+
+it('tidak menampilkan gambar logo selama logo usaha belum diunggah', function () {
+    $this->get('/isolir')
+        ->assertOk()
+        ->assertDontSee('class="brand-logo"', false);
 });

@@ -10,7 +10,7 @@ it('menampilkan aturan tagihan saat ini', function () {
     $this->actingAs(userWithRole(Role::Admin))
         ->get(route('settings.billing.edit'))
         ->assertInertia(fn (Assert $page) => $page
-            ->component('settings/billing')
+            ->component('settings/billing', true)
             ->where('billing.due_days', 7)
             ->where('billing.grace_days', 3)
             ->where('billing.auto_isolate', true)

@@ -30,6 +30,7 @@ class UserController extends Controller
     {
         $users = User::query()
             ->with('roles')
+            ->withExists(['receivedPayments', 'activityLogs'])
             ->applyFilters($request->filters())
             ->orderBy('name')
             ->paginate($request->perPage())

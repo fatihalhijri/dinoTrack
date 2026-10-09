@@ -8,6 +8,7 @@ use App\Enums\MessageTemplateKey;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\MessageTemplate;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -47,6 +48,23 @@ final class MessageTemplateRenderer
         }
 
         return strtr($template->body, $this->placeholders($customer, $invoice));
+    }
+
+    /**
+     * Contoh nilai setiap placeholder untuk pratinjau di halaman pengaturan template,
+     * diformat sama dengan pesan sungguhan (tanggal panjang, Rupiah tanpa spasi).
+     *
+     * @return array<string, string>
+     */
+    public function examples(CarbonImmutable $today, int $dueDays): array
+    {
+        return [
+            '{nama}' => 'Budi Santoso',
+            '{nomor_invoice}' => 'INV/'.$today->format('Y/m').'/00001',
+            '{total}' => Money::format(150000),
+            '{jatuh_tempo}' => $today->addDays($dueDays)->translatedFormat('j F Y'),
+            '{link_bayar}' => url('tagihan/1').'?signature=contoh',
+        ];
     }
 
     /**

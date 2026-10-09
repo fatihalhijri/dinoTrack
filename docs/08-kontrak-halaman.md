@@ -122,7 +122,7 @@ type Invoice = {
 }
 type MessageLog = { id: number; invoice_id: number | null; template_key: MessageTemplateKey | null; template_label: string | null; phone: string; body: string; status: MessageStatus; status_label: string; error: string | null; sent_at: string | null; created_at: string | null }
 type ActivityLog = { id: number; action: string; action_label: string; user?: { id: number; name: string } | null; properties: Record<string, unknown> | null; created_at: string | null }
-type User = { id: number; name: string; email: string; role: Role | null; role_label: string | null; is_active: boolean; deactivated_at: string | null; created_at: string | null }
+type User = { id: number; name: string; email: string; role: Role | null; role_label: string | null; is_active: boolean; deactivated_at: string | null; created_at: string | null; can_delete?: boolean }
 type MessageTemplate = { id: number; key: MessageTemplateKey; label: string; body: string; is_active: boolean; updated_at: string | null }
 ```
 
@@ -272,7 +272,7 @@ menandai anomali `needs_review` → `resolved`; catatan ditambahkan di bawah ala
 
 | Prop | Tipe |
 |---|---|
-| `users` | Paginated\<User\> |
+| `users` | Paginated\<User\> (dengan `can_delete`: akun belum punya jejak audit, yaitu pembayaran yang dicatat atau activity log; syarat yang sama dengan `DeleteUser`) |
 | `filters` | `{ search?, role?, per_page? }` |
 | `roles` | `{ value, label }[]` |
 
@@ -281,7 +281,9 @@ Aksi: `POST /users` (`name`, `email`, `password`, `password_confirmation`,
 `POST /users/{id}/deactivate`, `POST /users/{id}/reactivate`,
 `DELETE /users/{id}` (hanya akun tanpa jejak audit). Admin tidak bisa
 mengubah role/menonaktifkan/menghapus dirinya sendiri, dan admin aktif
-terakhir dilindungi (`errors.user` / `errors.role`).
+terakhir dilindungi (`errors.user` / `errors.role`). Halaman menyembunyikan Nonaktifkan dan
+Hapus untuk akun sendiri (`auth.user.id`), mengunci role akun sendiri di modal ubah, dan
+menampilkan Hapus hanya jika `can_delete`.
 
 ### `settings/business` — `GET /settings/business` (`settings.manage`)
 
@@ -289,9 +291,14 @@ terakhir dilindungi (`errors.user` / `errors.role`).
 |---|---|
 | `business` | `{ name: string\|null, address: string\|null, whatsapp: string\|null }` |
 | `default_name` | string (`APP_NAME`, dipakai jika `name` kosong) |
+| `logo_url` | string \| null — URL publik logo usaha (`/storage/business/...`); `null` jika belum diunggah |
+| `logo_max_kilobytes` | number (1024) — batas ukuran logo untuk teks bantuan |
 
-Aksi: `PUT /settings/business` (semua opsional; WA dinormalisasi ke `62xxx`).
-Logo usaha menyusul di fase frontend.
+Aksi: `PUT /settings/business` (semua opsional; WA dinormalisasi ke `62xxx`),
+`POST /settings/business/logo` (`logo`: PNG/JPG/WebP dari isi file, maks 1 MB; SVG ditolak;
+multipart) dan `DELETE /settings/business/logo`. Logo disimpan di disk `public` dengan nama acak
+(path di setting `business.logo_path`), tampil di layout Blade halaman publik, dan dicatat
+`settings.updated`.
 
 ### `settings/billing` — `GET /settings/billing` (`settings.manage`)
 
@@ -308,7 +315,8 @@ Aksi: `PUT /settings/billing` (semua wajib; `reminder_days_before` < `due_days`)
 |---|---|
 | `templates` | MessageTemplate[] |
 | `placeholders` | `Record<string, string>` (`{nama}` → arti, dst.) |
-| `max_length` | number (2000) |
+| `placeholder_examples` | `Record<string, string>` — contoh nilai per placeholder untuk pratinjau, diformat sama dengan pesan asli (`Rp150.000`, `16 Oktober 2026`) |
+| `max_length` | number (2000, dihitung per karakter seperti `mb_strlen`) |
 
 Aksi: `PUT /settings/message-templates/{id}` (`body`, `is_active`).
 

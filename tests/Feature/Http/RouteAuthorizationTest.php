@@ -64,6 +64,8 @@ function protectedRoutes(): array
         'users.reactivate' => ['post', fn () => route('users.reactivate', User::factory()->deactivated()->create()), Role::Kasir],
         'settings.business.edit' => ['get', fn () => route('settings.business.edit'), Role::Kasir],
         'settings.business.update' => ['put', fn () => route('settings.business.update'), Role::Kasir],
+        'settings.business.logo.store' => ['post', fn () => route('settings.business.logo.store'), Role::Kasir],
+        'settings.business.logo.destroy' => ['delete', fn () => route('settings.business.logo.destroy'), Role::Teknisi],
         'settings.billing.edit' => ['get', fn () => route('settings.billing.edit'), Role::Teknisi],
         'settings.billing.update' => ['put', fn () => route('settings.billing.update'), Role::Kasir],
         'settings.message-templates.index' => ['get', fn () => route('settings.message-templates.index'), Role::Kasir],
