@@ -92,10 +92,11 @@ class Payment extends Model
     }
 
     /**
-     * Filter halaman daftar pembayaran; rentang tanggal mengikuti `paid_at` (inklusif).
+     * Filter halaman daftar pembayaran; rentang tanggal mengikuti `paid_at` (inklusif) dan
+     * pelanggan mengikuti pemilik invoice.
      *
      * @param  Builder<self>  $query
-     * @param  array{search?: string|null, method?: PaymentMethod|null, review_status?: PaymentReviewStatus|null, from?: CarbonImmutable|null, to?: CarbonImmutable|null}  $filters
+     * @param  array{search?: string|null, method?: PaymentMethod|null, review_status?: PaymentReviewStatus|null, from?: CarbonImmutable|null, to?: CarbonImmutable|null, customer_id?: int|null}  $filters
      */
     #[Scope]
     protected function applyFilters(Builder $query, array $filters): void
@@ -105,6 +106,7 @@ class Payment extends Model
         $reviewStatus = $filters['review_status'] ?? null;
         $from = $filters['from'] ?? null;
         $to = $filters['to'] ?? null;
+        $customerId = $filters['customer_id'] ?? null;
 
         $query
             ->when($search !== null, fn (Builder $query) => $query->where(function (Builder $query) use ($search): void {
@@ -116,7 +118,8 @@ class Payment extends Model
             ->when($method !== null, fn (Builder $query) => $query->where('method', $method))
             ->when($reviewStatus !== null, fn (Builder $query) => $query->where('review_status', $reviewStatus))
             ->when($from !== null, fn (Builder $query) => $query->where('paid_at', '>=', $from?->startOfDay()))
-            ->when($to !== null, fn (Builder $query) => $query->where('paid_at', '<=', $to?->endOfDay()));
+            ->when($to !== null, fn (Builder $query) => $query->where('paid_at', '<=', $to?->endOfDay()))
+            ->when($customerId !== null, fn (Builder $query) => $query->whereRelation('invoice', 'customer_id', $customerId));
     }
 
     /**

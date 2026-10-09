@@ -84,7 +84,7 @@ export default function FilterBar<T extends BaseFilters>({
                     }
                 >
                     <SelectTrigger
-                        className="h-10 w-full md:w-32"
+                        className="h-10 w-full md:w-36"
                         aria-label="Jumlah per halaman"
                     >
                         <SelectValue />

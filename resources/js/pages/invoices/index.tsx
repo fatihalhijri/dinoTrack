@@ -1,5 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
-import { CalendarClock, ReceiptText, X } from 'lucide-react';
+import { CalendarClock, ReceiptText } from 'lucide-react';
+import CustomerFilterChip from '@/components/customer-filter-chip';
 import type { DataTableColumn } from '@/components/data-table';
 import DataTable from '@/components/data-table';
 import EmptyState from '@/components/empty-state';
@@ -8,7 +9,6 @@ import Money from '@/components/money';
 import PageHeader from '@/components/page-header';
 import Pagination from '@/components/pagination';
 import StatusBadge from '@/components/status-badge';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
     Select,
@@ -171,28 +171,13 @@ export default function InvoicesIndex({
                 />
 
                 {customerId ? (
-                    <div className="flex h-10 max-w-full items-center gap-1 self-start rounded-full border bg-card pr-0 pl-4 text-sm">
-                        <span className="min-w-0 truncate">
-                            Tagihan milik{' '}
-                            <span className="font-medium">
-                                {customer
-                                    ? `${customer.code} – ${customer.name}`
-                                    : 'pelanggan tidak ditemukan'}
-                            </span>
-                        </span>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-10 shrink-0 rounded-full"
-                            aria-label="Hapus filter pelanggan"
-                            onClick={() =>
-                                filters.setFilter('customer_id', undefined)
-                            }
-                        >
-                            <X />
-                        </Button>
-                    </div>
+                    <CustomerFilterChip
+                        prefix="Tagihan milik"
+                        customer={customer}
+                        onClear={() =>
+                            filters.setFilter('customer_id', undefined)
+                        }
+                    />
                 ) : null}
 
                 <FilterBar

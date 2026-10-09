@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatDate, formatDateTime, formatPeriod } from '@/lib/format';
 import { index as invoicesIndex, show as invoiceShow } from '@/routes/invoices';
+import { index as paymentsIndex } from '@/routes/payments';
 import type { ActivityLog, Invoice, MessageLog, Payment } from '@/types';
 
 const linkClass = 'font-medium text-primary underline-offset-4 hover:underline';
@@ -282,7 +283,7 @@ export default function CustomerHistoryTabs({
             ) : null}
 
             {payments !== null ? (
-                <TabsContent value="payments">
+                <TabsContent value="payments" className="flex flex-col gap-3">
                     <DataTable
                         columns={paymentColumns}
                         rows={payments}
@@ -290,6 +291,22 @@ export default function CustomerHistoryTabs({
                         mobileCard={PaymentCard}
                         emptyState={<EmptyState title="Belum ada pembayaran" />}
                     />
+                    {payments.length > 0 ? (
+                        <Button
+                            asChild
+                            variant="ghost"
+                            className="h-10 self-end"
+                        >
+                            <Link
+                                href={paymentsIndex({
+                                    query: { customer_id: customerId },
+                                })}
+                            >
+                                Lihat semua pembayaran
+                                <ArrowRight />
+                            </Link>
+                        </Button>
+                    ) : null}
                 </TabsContent>
             ) : null}
 

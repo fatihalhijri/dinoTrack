@@ -89,7 +89,8 @@ it('menampilkan detail tagihan dengan link bayar tanpa respons mentah gateway', 
             ->where('invoice.number', $invoice->number)
             ->has('invoice.payment_charges', 1, fn (Assert $charge) => $charge->missing('raw_response')->etc())
             ->where('payment_link', fn (string $link): bool => str_contains($link, '/tagihan/'.$invoice->id) && str_contains($link, 'signature='))
-            ->where('packages', null));
+            ->where('packages', null)
+            ->where('payment_methods', [['value' => 'cash', 'label' => 'Tunai'], ['value' => 'transfer', 'label' => 'Transfer bank']]));
     expect($response->getContent())->not->toContain('rahasia-gateway');
 });
 

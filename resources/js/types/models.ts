@@ -236,7 +236,7 @@ export type CustomerCounts = Record<CustomerStatus, number> & {
     network_error: number;
 };
 
-/** Pelanggan terpilih di filter daftar tagihan (`invoices/index` prop `customer`). */
+/** Pelanggan terpilih di filter daftar tagihan/pembayaran (prop `customer` `invoices/index` dan `payments/index`). */
 export type CustomerReference = {
     id: number;
     code: string;

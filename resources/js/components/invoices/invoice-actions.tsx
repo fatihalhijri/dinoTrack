@@ -1,6 +1,14 @@
 import type { LucideIcon } from 'lucide-react';
-import { Ban, EllipsisVertical, Printer, RefreshCw, Send } from 'lucide-react';
+import {
+    Ban,
+    Banknote,
+    EllipsisVertical,
+    Printer,
+    RefreshCw,
+    Send,
+} from 'lucide-react';
 import ConfirmDialog from '@/components/confirm-dialog';
+import RecordPaymentDialog from '@/components/invoices/record-payment-dialog';
 import ReissueInvoiceDialog from '@/components/invoices/reissue-invoice-dialog';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,9 +21,15 @@ import type { CanFn } from '@/hooks/use-can';
 import { useCan } from '@/hooks/use-can';
 import { useDialogTarget } from '@/hooks/use-dialog-target';
 import { cancel, resend } from '@/routes/invoices';
-import type { Invoice, InvoiceReference, PackageOption } from '@/types';
+import type {
+    Invoice,
+    InvoiceReference,
+    PackageOption,
+    PaymentMethod,
+    SelectOption,
+} from '@/types';
 
-type InvoiceActionKey = 'print' | 'resend' | 'cancel' | 'reissue';
+type InvoiceActionKey = 'record' | 'print' | 'resend' | 'cancel' | 'reissue';
 
 type InvoiceAction = {
     key: InvoiceActionKey;
@@ -27,17 +41,28 @@ type InvoiceAction = {
 
 /**
  * Aksi yang valid untuk permission user DAN status tagihan (docs/04 "Status invoice"):
- * kirim ulang dan batalkan hanya untuk tagihan yang belum dibayar, terbit ulang hanya untuk
+ * catat pembayaran, kirim ulang, dan batalkan hanya untuk tagihan yang belum dibayar
+ * (opsi metode hanya dikirim untuk `payments.record`), terbit ulang hanya untuk
  * tagihan batal yang periodenya belum diterbitkan ulang. Penolakan tetap dari backend.
  */
 function availableActions(
     invoice: Invoice,
     can: CanFn,
     canReissue: boolean,
+    canRecordPayment: boolean,
 ): InvoiceAction[] {
     const isOutstanding =
         invoice.status === 'unpaid' || invoice.status === 'overdue';
     const actions: InvoiceAction[] = [];
+
+    if (isOutstanding && canRecordPayment) {
+        actions.push({
+            key: 'record',
+            label: 'Catat pembayaran',
+            icon: Banknote,
+            primary: true,
+        });
+    }
 
     if (invoice.status === 'cancelled' && canReissue) {
         actions.push({
@@ -74,10 +99,13 @@ export default function InvoiceActions({
     invoice,
     packages,
     replacement,
+    paymentMethods,
 }: {
     invoice: Invoice;
     packages: PackageOption[] | null;
     replacement: InvoiceReference | null;
+    /** Metode pembayaran manual; `null` tanpa `payments.record`. */
+    paymentMethods: SelectOption<PaymentMethod>[] | null;
 }) {
     const can = useCan();
     const dialog = useDialogTarget<InvoiceActionKey>();
@@ -85,6 +113,7 @@ export default function InvoiceActions({
         invoice,
         can,
         packages !== null && replacement === null,
+        paymentMethods !== null && can('payments.record'),
     );
 
     const run = (key: InvoiceActionKey): void => {
@@ -157,6 +186,15 @@ export default function InvoiceActions({
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
+
+            {dialog.item === 'record' && paymentMethods !== null ? (
+                <RecordPaymentDialog
+                    key={dialog.key}
+                    invoice={invoice}
+                    methods={paymentMethods}
+                    {...dialogProps}
+                />
+            ) : null}
 
             {dialog.item === 'resend' ? (
                 <ConfirmDialog

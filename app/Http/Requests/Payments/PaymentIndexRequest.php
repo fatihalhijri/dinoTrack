@@ -32,11 +32,12 @@ class PaymentIndexRequest extends FormRequest
             'review_status' => ['nullable', Rule::enum(PaymentReviewStatus::class)],
             'from' => ['nullable', 'date_format:Y-m-d'],
             'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
+            'customer_id' => ['nullable', 'integer'],
         ];
     }
 
     /**
-     * @return array{search: string|null, method: PaymentMethod|null, review_status: PaymentReviewStatus|null, from: CarbonImmutable|null, to: CarbonImmutable|null}
+     * @return array{search: string|null, method: PaymentMethod|null, review_status: PaymentReviewStatus|null, from: CarbonImmutable|null, to: CarbonImmutable|null, customer_id: int|null}
      */
     public function filters(): array
     {
@@ -46,6 +47,7 @@ class PaymentIndexRequest extends FormRequest
             'review_status' => $this->enum('review_status', PaymentReviewStatus::class),
             'from' => $this->filled('from') ? CarbonImmutable::parse($this->string('from')->toString()) : null,
             'to' => $this->filled('to') ? CarbonImmutable::parse($this->string('to')->toString()) : null,
+            'customer_id' => $this->filled('customer_id') ? $this->integer('customer_id') : null,
         ];
     }
 
@@ -60,6 +62,7 @@ class PaymentIndexRequest extends FormRequest
             'review_status' => 'status tinjauan',
             'from' => 'tanggal awal',
             'to' => 'tanggal akhir',
+            'customer_id' => 'pelanggan',
         ];
     }
 }

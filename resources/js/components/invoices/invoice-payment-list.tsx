@@ -2,7 +2,7 @@ import type { DataTableColumn } from '@/components/data-table';
 import DataTable from '@/components/data-table';
 import EmptyState from '@/components/empty-state';
 import Money from '@/components/money';
-import StatusBadge from '@/components/status-badge';
+import PaymentReviewInfo from '@/components/payments/payment-review-info';
 import { formatDateTime } from '@/lib/format';
 import type { Payment } from '@/types';
 
@@ -21,27 +21,6 @@ function MethodText({ payment }: { payment: Payment }) {
                 </span>
             ) : null}
         </span>
-    );
-}
-
-function ReviewInfo({ payment }: { payment: Payment }) {
-    if (payment.review_status === 'none') {
-        return '—';
-    }
-
-    return (
-        <div className="flex flex-col items-start gap-1">
-            <StatusBadge
-                kind="review"
-                value={payment.review_status}
-                label={payment.review_status_label}
-            />
-            {payment.review_note ? (
-                <p className="text-xs whitespace-pre-line text-muted-foreground">
-                    {payment.review_note}
-                </p>
-            ) : null}
-        </div>
     );
 }
 
@@ -88,7 +67,7 @@ const columns: DataTableColumn<Payment>[] = [
         key: 'review',
         header: 'Tinjauan',
         className: 'max-w-64 whitespace-normal',
-        cell: (payment) => <ReviewInfo payment={payment} />,
+        cell: (payment) => <PaymentReviewInfo payment={payment} />,
     },
 ];
 
@@ -111,7 +90,7 @@ function PaymentCard(payment: Payment) {
             ) : null}
             <PaymentNotes payment={payment} />
             {payment.review_status === 'none' ? null : (
-                <ReviewInfo payment={payment} />
+                <PaymentReviewInfo payment={payment} />
             )}
         </div>
     );

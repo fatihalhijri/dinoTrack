@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { ArrowRight, Ban } from 'lucide-react';
+import { ArrowRight, Ban, TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 import InvoiceActions from '@/components/invoices/invoice-actions';
 import InvoiceDetailCard from '@/components/invoices/invoice-detail-card';
@@ -9,15 +9,19 @@ import PaymentLinkCard from '@/components/invoices/payment-link-card';
 import MessageLogList from '@/components/message-log-list';
 import StatusBadge from '@/components/status-badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { formatDateTime } from '@/lib/format';
+import { useCan } from '@/hooks/use-can';
+import { formatDateTime, formatNumber } from '@/lib/format';
 import { show as customerShow } from '@/routes/customers';
 import { index as invoicesIndex, show } from '@/routes/invoices';
+import { index as paymentsIndex } from '@/routes/payments';
 import type {
     BusinessIdentity,
     Invoice,
     InvoiceReference,
     MessageLog,
     PackageOption,
+    PaymentMethod,
+    SelectOption,
 } from '@/types';
 
 type InvoicesShowProps = {
@@ -29,6 +33,8 @@ type InvoicesShowProps = {
     /** Tagihan aktif untuk periode yang sama (hasil terbit ulang), hanya untuk tagihan batal. */
     replacement: InvoiceReference | null;
     business: BusinessIdentity;
+    /** Metode pembayaran manual (tunai/transfer); `null` tanpa `payments.record`. */
+    payment_methods: SelectOption<PaymentMethod>[] | null;
 };
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -47,9 +53,14 @@ export default function InvoicesShow({
     packages,
     replacement,
     business,
+    payment_methods: paymentMethods,
 }: InvoicesShowProps) {
+    const can = useCan();
     const isOutstanding =
         invoice.status === 'unpaid' || invoice.status === 'overdue';
+    const needsReviewCount = (invoice.payments ?? []).filter(
+        (payment) => payment.review_status === 'needs_review',
+    ).length;
 
     return (
         <>
@@ -83,6 +94,7 @@ export default function InvoicesShow({
                         invoice={invoice}
                         packages={packages}
                         replacement={replacement}
+                        paymentMethods={paymentMethods}
                     />
                 </div>
 
@@ -103,6 +115,37 @@ export default function InvoicesShow({
                                 >
                                     Sudah diterbitkan ulang sebagai{' '}
                                     {replacement.number}
+                                    <ArrowRight className="size-4" />
+                                </Link>
+                            ) : null}
+                        </AlertDescription>
+                    </Alert>
+                ) : null}
+
+                {needsReviewCount > 0 ? (
+                    <Alert className="border-warning/40 bg-warning/5 print:hidden [&>svg]:text-warning">
+                        <TriangleAlert />
+                        <AlertTitle>
+                            {formatNumber(needsReviewCount)} pembayaran perlu
+                            tinjauan
+                        </AlertTitle>
+                        <AlertDescription>
+                            <p>
+                                Pembayaran anomali tidak mengubah status
+                                tagihan. Admin meninjaunya dan mengembalikan
+                                dana secara manual bila perlu.
+                            </p>
+                            {can('payments.view') ? (
+                                <Link
+                                    href={paymentsIndex({
+                                        query: {
+                                            review_status: 'needs_review',
+                                            search: invoice.number,
+                                        },
+                                    })}
+                                    className="inline-flex min-h-10 items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
+                                >
+                                    Buka di daftar pembayaran
                                     <ArrowRight className="size-4" />
                                 </Link>
                             ) : null}

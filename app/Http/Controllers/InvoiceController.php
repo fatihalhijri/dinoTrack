@@ -8,6 +8,7 @@ use App\Actions\Invoices\CancelInvoice;
 use App\Actions\Invoices\ReissueInvoice;
 use App\Actions\Invoices\ResendInvoice;
 use App\Enums\InvoiceStatus;
+use App\Enums\PaymentMethod;
 use App\Http\Requests\Invoices\CancelInvoiceRequest;
 use App\Http\Requests\Invoices\InvoiceIndexRequest;
 use App\Http\Requests\Invoices\ReissueInvoiceRequest;
@@ -16,6 +17,7 @@ use App\Http\Resources\MessageLogResource;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Package;
+use App\Models\Payment;
 use App\Support\InvoicePaymentLink;
 use App\Support\SettingsRepository;
 use Illuminate\Http\RedirectResponse;
@@ -59,10 +61,23 @@ class InvoiceController extends Controller
             'messages' => MessageLogResource::collection($invoice->messageLogs()->latest('id')->get()),
             // Paket koreksi untuk terbit ulang (B12), hanya untuk yang boleh menerbitkan ulang.
             'packages' => $request->user()?->can('reissue', $invoice) ? $this->correctionPackages() : null,
+            // Metode pembayaran manual (QRIS hanya dicatat gateway), hanya untuk yang boleh mencatat.
+            'payment_methods' => $request->user()?->can('create', Payment::class) ? $this->manualPaymentMethods() : null,
             'replacement' => $this->replacementOf($invoice),
             // Identitas usaha untuk tampilan cetak.
             'business' => ['name' => $settings->businessName(), 'address' => $settings->businessAddress(), 'whatsapp' => $settings->businessWhatsapp()],
         ]);
+    }
+
+    /**
+     * @return array<int, array{value: string, label: string}>
+     */
+    private function manualPaymentMethods(): array
+    {
+        return array_map(
+            fn (PaymentMethod $method): array => ['value' => $method->value, 'label' => $method->label()],
+            [PaymentMethod::Cash, PaymentMethod::Transfer],
+        );
     }
 
     /**

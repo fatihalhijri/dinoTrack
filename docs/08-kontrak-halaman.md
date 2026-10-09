@@ -241,6 +241,7 @@ nilai lain ditolak validasi.
 | `packages` | `{ id, name, speed_label, price }[]` \| null | paket aktif untuk koreksi terbit ulang; `null` tanpa `invoices.cancel` |
 | `replacement` | `{ id, number }` \| null | invoice aktif (bukan `cancelled`) untuk subscription dan periode yang sama, hasil terbit ulang; hanya diisi untuk invoice `cancelled`. Jika terisi, periode itu tidak bisa diterbitkan ulang lagi |
 | `business` | `{ name: string, address: string\|null, whatsapp: string\|null }` | identitas usaha untuk tampilan cetak; `name` = `APP_NAME` jika belum diisi |
+| `payment_methods` | `{ value: 'cash'\|'transfer', label }[]` \| null | metode untuk dialog catat pembayaran (QRIS hanya dicatat gateway); `null` tanpa `payments.record` |
 
 Aksi:
 
@@ -256,9 +257,13 @@ Aksi:
 | Prop | Tipe |
 |---|---|
 | `payments` | Paginated\<Payment\> (dengan `invoice.customer`, `order_id`, `received_by`) |
-| `filters` | `{ search?, method?, review_status?, from?, to?, per_page? }` |
+| `filters` | `{ search?, method?, review_status?, from?, to?, customer_id?, per_page? }` |
 | `methods` | `{ value, label }[]` |
 | `review_statuses` | `{ value, label }[]` |
+| `customer` | `{ id, code, name }` \| null — pelanggan dari filter `customer_id` (chip "Pembayaran milik …", tautan "Lihat semua pembayaran" di `customers/show`); `null` tanpa filter atau jika pelanggan tidak ditemukan |
+
+`search` mencari referensi gateway, nomor tagihan, serta kode dan nama pelanggan. `from`/`to`
+menyaring tanggal `paid_at` (inklusif). `customer_id` mencocokkan pemilik tagihan.
 
 Aksi: `PATCH /payments/{id}/review` (`payments.review`, `review_note` min 5) —
 menandai anomali `needs_review` → `resolved`; catatan ditambahkan di bawah alasan anomali.
