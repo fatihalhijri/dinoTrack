@@ -35,6 +35,7 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -43,7 +44,11 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Inertia\ExceptionResponse;
+use Inertia\Inertia;
 use InvalidArgumentException;
+use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -58,6 +63,15 @@ class AppServiceProvider extends ServiceProvider
     public const int PUBLIC_INVOICE_VIEWS_PER_MINUTE = 120;
 
     public const int PUBLIC_INVOICE_PAYMENTS_PER_MINUTE = 10;
+
+    /** @var list<int> */
+    public const array ERROR_PAGE_STATUSES = [403, 404, 419, 429, 500, 503];
+
+    /** @var array<int, string> */
+    public const array RETRYABLE_ERROR_MESSAGES = [
+        419 => 'Sesi halaman sudah kedaluwarsa. Silakan ulangi.',
+        429 => 'Terlalu banyak permintaan. Coba lagi sebentar lagi.',
+    ];
 
     /**
      * Register any application services.
@@ -85,13 +99,65 @@ class AppServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
         $this->configureHealthCheck();
         $this->configurePublicViews();
+        $this->configureErrorPages();
     }
 
     /**
-     * `/up` (bawaan Laravel) membalas 500 jika database atau Redis tidak bisa dipakai, agar
-     * pemantauan eksternal tahu aplikasi mati walaupun PHP masih berjalan. Router tidak dicek di
-     * sini karena lambat; pemeriksaan lengkap ada di `billing:health`.
+     * Error di halaman admin tampil sebagai halaman Inertia `errors/error` (Bahasa Indonesia),
+     * bukan halaman bawaan Laravel di dalam modal. Halaman publik (Blade tanpa session), webhook,
+     * dan request JSON tetap memakai respons bawaan. Error 500/503 saat debug tetap menampilkan
+     * halaman debug Laravel, dan mode maintenance memakai `errors/503.blade.php` karena aset Vite
+     * sedang dibangun ulang selama deploy.
      */
+    protected function configureErrorPages(): void
+    {
+        Inertia::handleExceptionsUsing(function (ExceptionResponse $error): ?Response {
+            $request = $error->request;
+            $status = $error->statusCode();
+
+            if ($request->expectsJson() || ! $this->rendersAdminPages($request)) {
+                return null;
+            }
+
+            // Formulir Inertia yang kena 419/429 kembali ke halaman asal dengan pesan, karena
+            // memuat ulang URL POST di halaman error hanya berakhir 405.
+            if (array_key_exists($status, self::RETRYABLE_ERROR_MESSAGES) && $request->hasHeader('X-Inertia') && $request->hasSession()) {
+                Inertia::flash('toast', ['type' => 'warning', 'message' => self::RETRYABLE_ERROR_MESSAGES[$status]]);
+
+                return back(Response::HTTP_SEE_OTHER);
+            }
+
+            if (! in_array($status, self::ERROR_PAGE_STATUSES, true)
+                || ($status >= 500 && config('app.debug'))
+                || $this->app->isDownForMaintenance()) {
+                return null;
+            }
+
+            try {
+                return $error->render('errors/error', ['status' => $status])->withSharedData()->toResponse($request);
+            } catch (Throwable $exception) {
+                // Mis. database mati saat membaca user: jatuh ke halaman error bawaan, bukan layar kosong.
+                report($exception);
+
+                return null;
+            }
+        });
+    }
+
+    /**
+     * Route di grup `web`, atau URL yang tidak cocok dengan route mana pun selain webhook.
+     */
+    protected function rendersAdminPages(Request $request): bool
+    {
+        $route = $request->route();
+
+        if (! $route instanceof Route) {
+            return ! $request->is('webhooks/*');
+        }
+
+        return in_array('web', $route->gatherMiddleware(), true);
+    }
+
     /**
      * Logo usaha untuk layout halaman publik (tagihan, isolir, link tidak valid), agar
      * setiap controller dan handler 403 tidak perlu mengirimnya sendiri.
@@ -103,6 +169,11 @@ class AppServiceProvider extends ServiceProvider
         });
     }
 
+    /**
+     * `/up` (bawaan Laravel) membalas 500 jika database atau Redis tidak bisa dipakai, agar
+     * pemantauan eksternal tahu aplikasi mati walaupun PHP masih berjalan. Router tidak dicek di
+     * sini karena lambat; pemeriksaan lengkap ada di `billing:health`.
+     */
     protected function configureHealthCheck(): void
     {
         Event::listen(DiagnosingHealth::class, function (): void {

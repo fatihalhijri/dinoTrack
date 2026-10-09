@@ -63,9 +63,15 @@ export default defineConfig({
         semi: true,
         singleAttributePerLine: false,
         htmlWhitespaceSensitivity: 'css',
+        // Dokumen markdown dan konfigurasi alat (sebagian ditulis ulang Laravel Boost) tidak
+        // diformat agar tabel docs/ tidak berubah tanpa isi yang berubah.
         ignorePatterns: [
+            '**/*.md',
+            '.claude/**',
+            '.mcp.json',
             '.github/**',
             'composer.json',
+            'pint.json',
             'resources/js/components/ui/*',
             'resources/views/mail/*',
         ],

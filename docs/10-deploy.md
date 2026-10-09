@@ -361,9 +361,10 @@ Pantau log harian dengan `tail -f storage/logs/laravel-$(date +%F).log` atau `ph
 menjalankan, di setiap push dan pull request, dengan PHP 8.4 (`mbstring`, `pdo_mysql`, `sockets`),
 Node 22, dan service MySQL 8.4 (`dinotrack_testing`, sama dengan `phpunit.xml`):
 `composer install` → `.env` dari `.env.example` + `key:generate` → `npm ci` →
-`php artisan wayfinder:generate` (helper route TS tidak di-commit) → `composer lint` (Pint
-`--test`) → `composer analyse` (PHPStan) → `composer test` (Pest) → `npm run build`.
-`npm run check` tidak dijalankan karena format markdown masih utang teknis. Dependabot
+`php artisan wayfinder:generate --with-form` (helper route TS tidak di-commit; `--with-form`
+wajib agar `.form()` ada) → `composer lint` (Pint `--test`) → `composer analyse` (PHPStan) →
+`composer test` (Pest) → `npm run types:check` → `npm run check` (lint + format frontend;
+markdown dan konfigurasi alat dikecualikan di `vite.config.ts`) → `npm run build`. Dependabot
 (`.github/dependabot.yml`) memperbarui versi action mingguan.
 
 Deploy tetap manual lewat `deploy.sh`; tidak ada deploy otomatis dari CI di v1.

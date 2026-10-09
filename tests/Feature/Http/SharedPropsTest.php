@@ -47,7 +47,7 @@ it('mengirim role null untuk user tanpa role', function () {
 });
 
 it('mengirim user null untuk tamu', function () {
-    $response = $this->get(route('home'));
+    $response = $this->get(route('login'));
 
     $response->assertInertia(fn (Assert $page) => $page->where('auth.user', null));
 });

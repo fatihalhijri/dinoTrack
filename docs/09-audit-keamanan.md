@@ -26,15 +26,15 @@ Status: ✅ diperbaiki (Tahap 10, atau Tahap 11 bila disebut) · ⏳ ditunda (ta
 | S-5 | Sedang | Jadwal pembersihan data lama di docs/02 belum dibuat | ✅ |
 | R-1 | Rendah | `npm audit`: `shell-quote` (critical) lewat `concurrently` di `dependencies` | ✅ |
 | R-2 | Rendah | Tanpa header keamanan (frame, referrer, sniffing) | ✅ |
-| R-3 | Rendah | Shared prop `auth.user` mengirim model User utuh | ⏳ fase frontend |
+| R-3 | Rendah | Shared prop `auth.user` mengirim model User utuh | ✅ F00 |
 | R-4 | Rendah | `customers.network_error` dan activity log memuat `host:port` router, terlihat kasir/teknisi | ✅ |
-| R-5 | Rendah | 2FA tidak diwajibkan untuk admin | ⏳ fase frontend |
+| R-5 | Rendah | 2FA tidak diwajibkan untuk admin; CSP belum dipasang | ⏳ keputusan (F09) |
 | R-6 | Rendah | Lock QRIS 60 s bisa habis sebelum panggilan gateway beruntun selesai | 📝 |
 | R-7 | Rendah | Panggilan router sinkron (status koneksi, tes koneksi) tanpa throttle | 📝 |
 | R-8 | Rendah | Cek tagihan `/isolir` bisa ditebak terdistribusi; `kode`/`hp` di query string | 📝 |
 | R-9 | Rendah | Semua job di queue `default`; job WA yang ditahan rate limit bangun bersamaan | ✅ Tahap 11 |
 | R-10 | Rendah | Konfigurasi production (proxy, debug, cookie, PHP) | ✅ Tahap 11 |
-| R-11 | Rendah | `npm audit` (dev): `tinypool` lewat `vite-plus` 0.3.0 | 📝 |
+| R-11 | Rendah | `npm audit` (dev): `tinypool` lewat `vite-plus` 0.3.0 | ✅ F09 |
 
 Tidak ada temuan **Kritis**.
 
@@ -151,14 +151,16 @@ tidak memakai grup `web`):
 
 Header referrer penting karena halaman tagihan publik memakai signed URL tanpa masa berlaku:
 URL lengkapnya tidak ikut terkirim ke Midtrans (gambar QR) atau `wa.me`. CSP belum dipasang
-karena halaman publik memakai skrip inline; bisa ditambah bersama fase frontend.
+(sisa R-5, keputusan F09).
 **Test:** `SecurityHeadersTest`.
 
-### R-3 — `auth.user` utuh di props Inertia (Rendah) ⏳
+### R-3 — `auth.user` utuh di props Inertia (Rendah) ✅ F00
 
 `HandleInertiaRequests` membagikan model `User` utuh. Kolom rahasia sudah `#[Hidden]`, tetapi
-relasi `roles`/`permissions` yang termuat oleh `hasRole()` ikut terkirim. Rapikan ke bentuk
-minimal saat fase frontend, karena komponen starter kit membaca beberapa field user.
+relasi `roles`/`permissions` yang termuat oleh `hasRole()` ikut terkirim. F00 membentuk
+`auth.user` secara eksplisit (`id`, `name`, `email`, `role`, `role_label`,
+`email_verified_at`, `two_factor_enabled`; docs/08 "Props bersama").
+**Test:** `SharedPropsTest`.
 
 ### R-4 — Alamat router terlihat kasir/teknisi (Rendah) ✅
 
@@ -168,10 +170,21 @@ dijangkau (Router Pusat).`). `HandlesRouterFailures` memakai ringkasan ini untuk
 masuk log aplikasi. Hasil tes koneksi untuk admin tetap menampilkan detail.
 **Test:** `MikrotikNetworkControllerTest`, `NetworkJobsTest`.
 
-### R-5 — 2FA admin tidak wajib (Rendah) ⏳
+### R-5 — 2FA admin tidak wajib, CSP belum dipasang (Rendah) ⏳ keputusan
 
 Admin mengendalikan pengaturan, router, dan pembatalan tagihan. Pertimbangkan mewajibkan 2FA
-(middleware yang mengarahkan admin tanpa 2FA ke halaman keamanan) di fase frontend.
+(middleware yang mengarahkan admin tanpa 2FA ke halaman keamanan).
+
+F09 sengaja tidak mengerjakan keduanya (keputusan 2026-10-09):
+
+- **2FA wajib** adalah keputusan kebijakan pemilik usaha: admin yang belum menyiapkan aplikasi
+  authenticator akan terkunci dari halaman admin. 2FA dan passkey sudah tersedia secara opsional
+  di Pengaturan → Keamanan.
+- **CSP** butuh nonce untuk skrip inline di `app.blade.php` (tema) dan halaman publik Blade
+  (QRIS + polling, cek tagihan), `Vite::useCspNonce()`, serta `style-src 'unsafe-inline'` untuk
+  style inline Recharts dan halaman publik. Risiko utama yang ditutup CSP (XSS) sudah ditekan
+  oleh escaping React/Blade dan tidak adanya HTML dari pengguna; header frame, sniffing, dan
+  referrer sudah dipasang (R-2).
 
 ### R-6 — Lock charge QRIS bisa habis (Rendah) 📝
 
@@ -217,12 +230,17 @@ Diselesaikan di docs/10 (checklist `.env`, Nginx, PHP) dan diperiksa otomatis ol
 - rotasi log
 - **PHP 8.4** (prompt Tahap 11 menyebut 8.3, proyek memakai 8.4)
 
-### R-11 — `tinypool` lewat `vite-plus` (Rendah) 📝
+### R-11 — `tinypool` lewat `vite-plus` (Rendah) ✅ F09
 
 `npm audit` (termasuk dev) melaporkan `tinypool` ≤2.1.1 lewat `vite-plus` 0.3.0 yang dipasang
 dengan versi tetap. Hanya alat build/format di mesin pengembang, tidak ikut ke production
-runtime. Perbaikannya menaikkan `vite-plus` ke ≥0.3.3; ditunda agar toolchain frontend tidak
-berubah di fase backend.
+runtime. F09 menaikkan `vite-plus` ke 0.3.3 (versi tetap). Versi ini mewajibkan paket `vite`
+dialias ke `@voidzero-dev/vite-plus-core` dengan versi yang sama (`"vite":
+"npm:@voidzero-dev/vite-plus-core@0.3.3"` di `devDependencies`; naikkan keduanya bersamaan),
+ditambah `overrides.vite = "$vite"` agar peer `vite@^8` milik plugin (Inertia, Laravel,
+Tailwind, React) memakai alias yang sama; tanpa override `npm ci` gagal `ERESOLVE`. `npm ls`
+masih menandai peer itu *invalid* karena nomor versinya 0.3.3, bukan 8.x; ini hanya kosmetik
+(`npm ci` dari lockfile, build, lint, dan format berjalan). `npm audit` kini 0 celah.
 
 ## Hasil per area yang diminta
 
@@ -257,7 +275,7 @@ berubah di fase backend.
 - User: password/2FA/remember token `#[Hidden]`; `UserResource` tanpa field rahasia.
 - `payment_charges.raw_response` tidak dikirim ke frontend; `PaymentChargeResource` tanpa respons mentah.
 - Token Fonnte dan Server Key Midtrans tidak masuk pesan galat; kredensial hanya lewat `.env` → `config/services.php`.
-- Alamat router kini tidak tampil ke kasir/teknisi (R-4); `auth.user` masih utuh (R-3).
+- Alamat router kini tidak tampil ke kasir/teknisi (R-4); `auth.user` sudah minimal sejak F00 (R-3).
 - Raw SQL (`selectRaw`, `DB::raw`) semuanya memakai binding atau literal. Blade publik memakai
   `{{ }}` dan `@json` (ter-escape; ada test escaping). Ekspor CSV menetralkan formula.
 
@@ -299,7 +317,7 @@ dibatasi (R-2). Mengganti `APP_KEY` membatalkan semua link.
 
 - `composer audit`: tidak ada advisory.
 - `npm audit --omit=dev`: bersih setelah R-1.
-- `npm audit` (termasuk dev): `tinypool` via `vite-plus` (R-11).
+- `npm audit` (termasuk dev): bersih sejak F09 (R-11).
 
 ### 9. Cakupan test aturan bisnis
 

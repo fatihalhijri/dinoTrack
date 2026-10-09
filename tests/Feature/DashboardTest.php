@@ -13,6 +13,20 @@ test('guests are redirected to the login page', function () {
     $response->assertRedirect(route('login'));
 });
 
+it('mengarahkan beranda ke dashboard, lalu tamu ke halaman login', function () {
+    $this->get('/')->assertRedirect(route('dashboard'));
+
+    $this->followingRedirects()->get('/')
+        ->assertInertia(fn (Assert $page) => $page->component('auth/login', true));
+});
+
+it('mengarahkan user login dari beranda ke dashboard', function () {
+    $this->actingAs(userWithRole(Role::Kasir))
+        ->followingRedirects()
+        ->get('/')
+        ->assertInertia(fn (Assert $page) => $page->component('dashboard', true));
+});
+
 test('authenticated users can visit the dashboard', function () {
     $user = User::factory()->create();
 
