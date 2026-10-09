@@ -52,6 +52,8 @@
     --color-input: var(--input);
     --color-ring: var(--ring);
 
+    /* Seri grafik berurutan tetap (1 QRIS, 2 tunai, 3 transfer). Slot 1–3 lolos cek kecerahan,
+       buta warna, dan kontras terhadap kartu di kedua mode; ubah hanya setelah divalidasi ulang. */
     --color-chart-1: var(--chart-1);
     --color-chart-2: var(--chart-2);
     --color-chart-3: var(--chart-3);
@@ -96,8 +98,8 @@
     --input: oklch(0.89 0.012 255);
     --ring: oklch(0.55 0.12 255);
     --chart-1: oklch(0.45 0.13 258);
-    --chart-2: oklch(0.65 0.12 190);
-    --chart-3: oklch(0.75 0.15 75);
+    --chart-2: oklch(0.6 0.11 190);
+    --chart-3: oklch(0.66 0.15 60);
     --chart-4: oklch(0.7 0.11 235);
     --chart-5: oklch(0.62 0.17 15);
     --radius: 0.625rem;
@@ -137,9 +139,9 @@
     --border: oklch(0.3 0.03 260);
     --input: oklch(0.32 0.03 260);
     --ring: oklch(0.6 0.12 245);
-    --chart-1: oklch(0.7 0.13 250);
-    --chart-2: oklch(0.72 0.12 185);
-    --chart-3: oklch(0.8 0.14 75);
+    --chart-1: oklch(0.6 0.15 258);
+    --chart-2: oklch(0.66 0.12 180);
+    --chart-3: oklch(0.66 0.15 65);
     --chart-4: oklch(0.62 0.1 235);
     --chart-5: oklch(0.7 0.16 15);
     --sidebar: oklch(0.14 0.03 262);

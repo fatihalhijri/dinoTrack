@@ -255,3 +255,47 @@ export type BusinessIdentity = {
     address: string | null;
     whatsapp: string | null;
 };
+
+/** Pendapatan satu bulan (`App\Data\Reports\MonthlyRevenue`): pembayaran normal menurut `paid_at`. */
+export type MonthlyRevenue = {
+    /** 1–12 */
+    month: number;
+    by_method: Record<PaymentMethod, number>;
+    total: number;
+    payment_count: number;
+};
+
+export type OutstandingAgeBucket = '0-7' | '8-30' | '31+';
+
+/** Umur tunggakan per kelompok (`App\Data\Reports\AgingBucketTotal`). */
+export type AgingBucketTotal = {
+    bucket: OutstandingAgeBucket;
+    label: string;
+    invoice_count: number;
+    amount: number;
+};
+
+/** Pergerakan pelanggan dalam rentang tanggal inklusif (`App\Data\Reports\CustomerMovement`). */
+export type CustomerMovement = {
+    from: string;
+    to: string;
+    new_customers: number;
+    terminated_customers: number;
+    isolated_customers: number;
+};
+
+/** Baris daftar tunggakan (`OutstandingInvoiceResource`). */
+export type OutstandingInvoice = {
+    id: number;
+    number: string;
+    customer_id: number;
+    customer_code: string;
+    customer_name: string;
+    customer_status: CustomerStatus;
+    customer_status_label: string;
+    due_at: string;
+    age_days: number;
+    total: number;
+    status: InvoiceStatus;
+    status_label: string;
+};

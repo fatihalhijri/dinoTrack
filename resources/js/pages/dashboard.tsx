@@ -18,6 +18,7 @@ import type { ReactNode } from 'react';
 import EmptyState from '@/components/empty-state';
 import Money from '@/components/money';
 import PageHeader from '@/components/page-header';
+import PageSection from '@/components/page-section';
 import StatCard from '@/components/stat-card';
 import { useCan } from '@/hooks/use-can';
 import { formatDateTime, formatNumber } from '@/lib/format';
@@ -72,7 +73,7 @@ export default function Dashboard({
                 />
 
                 {showReview || showNetworkError ? (
-                    <Section title="Perlu perhatian">
+                    <PageSection title="Perlu perhatian">
                         <div className="grid gap-3 sm:grid-cols-2">
                             {showReview && summary ? (
                                 <AttentionLink
@@ -106,11 +107,11 @@ export default function Dashboard({
                                 />
                             ) : null}
                         </div>
-                    </Section>
+                    </PageSection>
                 ) : null}
 
                 {summary ? (
-                    <Section
+                    <PageSection
                         title="Keuangan"
                         aside={`Diperbarui ${formatDateTime(summary.generated_at)} · tiap 5 menit`}
                     >
@@ -151,11 +152,11 @@ export default function Dashboard({
                                 description={`${formatNumber(summary.due_this_week_invoices)} tagihan belum dibayar`}
                             />
                         </div>
-                    </Section>
+                    </PageSection>
                 ) : null}
 
                 {customerCounts ? (
-                    <Section title="Pelanggan">
+                    <PageSection title="Pelanggan">
                         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                             {customerCards.map((card) => (
                                 <StatCard
@@ -171,7 +172,7 @@ export default function Dashboard({
                                 />
                             ))}
                         </div>
-                    </Section>
+                    </PageSection>
                 ) : null}
 
                 {!summary && !customerCounts ? (
@@ -183,28 +184,6 @@ export default function Dashboard({
                 ) : null}
             </div>
         </>
-    );
-}
-
-function Section({
-    title,
-    aside,
-    children,
-}: {
-    title: string;
-    aside?: ReactNode;
-    children: ReactNode;
-}) {
-    return (
-        <section className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <h2 className="text-base font-semibold">{title}</h2>
-                {aside ? (
-                    <p className="text-xs text-muted-foreground">{aside}</p>
-                ) : null}
-            </div>
-            {children}
-        </section>
     );
 }
 
