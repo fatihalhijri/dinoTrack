@@ -33,6 +33,8 @@ export type ConfirmDialogReason = {
     required?: boolean;
     /** Panjang minimal; default 5 sesuai aturan alasan di backend. */
     minLength?: number;
+    /** Panjang maksimal sesuai validasi backend; tanpa batas jika kosong. */
+    maxLength?: number;
 };
 
 /**
@@ -140,6 +142,7 @@ export default function ConfirmDialog({
                                 placeholder={reason.placeholder}
                                 required={reason.required ?? true}
                                 minLength={reason.minLength ?? 5}
+                                maxLength={reason.maxLength}
                                 rows={3}
                                 aria-invalid={
                                     form.errors[reasonField] ? true : undefined

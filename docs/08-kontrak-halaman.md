@@ -252,7 +252,7 @@ Aksi:
 | Aksi | Route | Permission | Input |
 |---|---|---|---|
 | Catat pembayaran | `POST /invoices/{id}/payments` | `payments.record` | `method` (`cash`/`transfer`), `amount` (= total), `paid_at?`, `notes?` |
-| Batalkan | `POST /invoices/{id}/cancel` | `invoices.cancel` | `reason` (min 5) |
+| Batalkan | `POST /invoices/{id}/cancel` | `invoices.cancel` | `reason` (5–255 karakter) |
 | Terbit ulang | `POST /invoices/{id}/reissue` | `invoices.cancel` | `package_id?` (paket koreksi) → redirect ke invoice baru |
 | Kirim ulang WA | `POST /invoices/{id}/resend` | `invoices.resend` | — (maks 6/menit; ditolak jika masih antre/template nonaktif) |
 

@@ -78,9 +78,11 @@ final class CreateQrisCharge
         $reusable = null;
 
         foreach ($invoice->paymentCharges()->pending()->orderByDesc('attempt')->get() as $charge) {
-            // Tanpa QR berarti proses sebelumnya berhenti sebelum gateway menjawab; tidak ada
-            // pelanggan yang bisa membayarnya, dan lock menjamin tidak ada panggilan yang masih berjalan.
-            if (! $charge->hasQr()) {
+            // Tanpa gambar QR tidak ada pelanggan yang bisa membayarnya: proses sebelumnya berhenti
+            // sebelum gateway menjawab (lock menjamin tidak ada panggilan yang masih berjalan), atau
+            // gateway hanya mengirim qr_string yang tidak bisa ditampilkan halaman tagihan. Jika QR
+            // itu tetap dibayar, webhook menerapkannya seperti charge `failed` lain.
+            if ($charge->qr_url === null) {
                 $charge->update(['status' => PaymentChargeStatus::Failed]);
 
                 continue;
