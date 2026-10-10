@@ -126,3 +126,15 @@ it('menggagalkan percobaan tanpa QR yang ditinggalkan proses sebelumnya', functi
     expect($abandoned->fresh()->status)->toBe(PaymentChargeStatus::Failed)
         ->and($charge->attempt)->toBe(2);
 });
+
+it('tidak memakai ulang charge yang hanya punya qr_string karena QR-nya tidak bisa ditampilkan', function () {
+    $gateway = fakeGateway();
+    $withoutImage = PaymentCharge::factory()->for(invoiceToPay())->create(['qr_url' => null, 'expires_at' => now()->addMinutes(10)]);
+
+    $charge = app(CreateQrisCharge::class)->handle($withoutImage->invoice);
+
+    expect($withoutImage->fresh()->status)->toBe(PaymentChargeStatus::Failed)
+        ->and($charge->attempt)->toBe(2)
+        ->and($charge->qr_url)->not->toBeNull();
+    $gateway->assertCalled('createQrisCharge', 1);
+});

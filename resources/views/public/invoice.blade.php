@@ -113,6 +113,8 @@
                 function showCharge(data) {
                     if (!data || data.status !== 'pending' || !data.qr_url || !data.expires_at) {
                         showError('Kode QR belum tersedia. Silakan coba lagi.');
+                        button.disabled = false;
+                        button.textContent = 'Coba lagi';
                         return;
                     }
                     var expiresAt = Date.parse(data.expires_at);

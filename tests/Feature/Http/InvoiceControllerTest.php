@@ -150,6 +150,16 @@ it('mewajibkan alasan pembatalan', function () {
         ->assertSessionHasErrors(['reason' => 'Alasan pembatalan wajib diisi.']);
 });
 
+it('menolak alasan pembatalan yang melebihi panjang kolom', function () {
+    $invoice = invoiceDueAt(customerOnProfile(Customer::factory()->active()), '2026-10-25', InvoiceStatus::Unpaid);
+
+    $this->actingAs(userWithRole(Role::Admin))
+        ->post(route('invoices.cancel', $invoice), ['reason' => str_repeat('a', 256)])
+        ->assertSessionHasErrors('reason');
+
+    expect($invoice->refresh()->status)->toBe(InvoiceStatus::Unpaid);
+});
+
 it('admin menerbitkan ulang tagihan yang dibatalkan lalu diarahkan ke tagihan baru', function () {
     $invoice = invoiceDueAt(customerOnProfile(Customer::factory()->active()), '2026-10-25', InvoiceStatus::Cancelled);
 

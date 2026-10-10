@@ -144,7 +144,9 @@ unpaid / overdue ──(dibatalkan admin)──> cancelled
   invoice.
 - Charge QRIS baru dibuat hanya jika charge sebelumnya sudah `expired` atau
   `failed`. Membuka halaman berulang kali memakai ulang charge `pending`
-  yang masih berlaku (sisa waktu lebih dari 1 menit).
+  yang masih berlaku (sisa waktu lebih dari 1 menit). Charge `pending` tanpa
+  URL gambar QR tidak bisa ditampilkan, sehingga ditandai `failed` dan
+  diganti charge baru.
 - Charge `pending` yang waktunya sudah habis dicek dulu ke gateway: jika
   ternyata sudah dibayar, invoice langsung lunas dan tidak ada charge baru.
 - QRIS berlaku 15 menit. Membatalkan invoice atau mencatat pembayaran tunai

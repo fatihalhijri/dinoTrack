@@ -19,12 +19,14 @@ class CancelInvoiceRequest extends FormRequest
     }
 
     /**
+     * Batas atas mengikuti kolom `invoices.cancelled_reason` (VARCHAR 255).
+     *
      * @return array<string, array<int, ValidationRule|string>>
      */
     public function rules(): array
     {
         return [
-            'reason' => ['required', 'string', 'min:'.CancelInvoice::MIN_REASON_LENGTH, 'max:500'],
+            'reason' => ['required', 'string', 'min:'.CancelInvoice::MIN_REASON_LENGTH, 'max:255'],
         ];
     }
 

@@ -217,6 +217,7 @@ export default function InvoiceActions({
                     reason={{
                         label: 'Alasan pembatalan',
                         placeholder: 'Minimal 5 karakter',
+                        maxLength: 255,
                     }}
                     confirmLabel="Batalkan tagihan"
                     destructive
