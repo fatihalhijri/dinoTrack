@@ -1,7 +1,7 @@
 # 08 — Kontrak Halaman Inertia
 
 Kontrak antara controller (Tahap 09) dan halaman React (fase frontend). Nama
-komponen = path file di `resources/js/pages` tanpa `.tsx`. Sumber kebenaran
+komponen = path file di `resources/js/pages` tanpa `.jsx`. Sumber kebenaran
 props adalah controller dan API Resource di `app/Http/Resources`; test di
 `tests/Feature/Http` memeriksa props ini. Jika kode dan dokumen ini berbeda,
 perbarui dokumen ini.
@@ -13,7 +13,7 @@ juga memastikan file halamannya ada.
 ## Konvensi umum
 
 - **Uang**: integer rupiah (`150000`). Format tampilan di frontend (`Rp150.000`)
-  lewat `formatRupiah()` di `resources/js/lib/format.ts`.
+  lewat `formatRupiah()` di `resources/js/lib/format.js`.
 - **Tanggal**: kolom `date` = `YYYY-MM-DD`; timestamp = ISO 8601 dengan zona
   waktu (`2026-10-06T14:30:00+07:00`). Di frontend, `YYYY-MM-DD` **tidak boleh**
   diparse dengan `new Date(str)` (dibaca UTC sehingga bisa bergeser hari); pakai
@@ -37,7 +37,7 @@ juga memastikan file halamannya ada.
   (`FormErrorAlert`).
 - **Flash**: data flash Inertia (`Inertia::flash('toast', ...)`, bukan props):
   `toast = { type: 'success'|'info'|'warning'|'error', message }`, ditangani
-  `use-flash-toast.ts`.
+  `use-flash-toast.js`.
 - **Akses**: 403 jika permission kurang. Tombol disembunyikan memakai
   `auth.permissions` (lihat props bersama dan bagian Permission); otorisasi tetap
   di backend.
@@ -83,8 +83,9 @@ Admin selalu mendapat semuanya.
 
 ## Bentuk resource
 
-Sumber kebenaran: `app/Http/Resources/*`. Salinan TypeScript ada di
-`resources/js/types/models.ts`; ubah keduanya bersamaan. Field bertanda `?`
+Sumber kebenaran: `app/Http/Resources/*`. Salinannya sebagai JSDoc `@typedef` ada di
+`resources/js/types/models.js`; ubah keduanya bersamaan. Blok di bawah memakai notasi tipe
+TypeScript (sama dengan isi `{...}` JSDoc). Field bertanda `?`
 hanya ada jika relasinya dimuat di halaman tersebut.
 
 ```ts

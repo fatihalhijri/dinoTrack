@@ -364,7 +364,7 @@ Node 22, dan service MySQL 8.4 (`dinotrack_testing`, sama dengan `phpunit.xml`):
 `php artisan wayfinder:generate --with-form` (helper route TS tidak di-commit; `--with-form`
 wajib agar `.form()` ada) → `composer lint` (Pint `--test`) → `composer analyse` (PHPStan) →
 `composer test` (Pest) → `npm run types:check` → `npm run check` (lint + format frontend;
-markdown dan konfigurasi alat dikecualikan di `vite.config.ts`) → `npm run build`. Dependabot
+markdown dan konfigurasi alat dikecualikan di `vite.config.js`) → `npm run build`. Dependabot
 (`.github/dependabot.yml`) memperbarui versi action mingguan.
 
 Deploy tetap manual lewat `deploy.sh`; tidak ada deploy otomatis dari CI di v1.

@@ -7,7 +7,7 @@ Mikrotik, serta notifikasi WhatsApp.
 ## Stack
 
 - Laravel 13, PHP 8.4, MySQL 8
-- Inertia.js + React + TypeScript (starter kit resmi Laravel)
+- Inertia.js + React (JSX + JSDoc, dari starter kit resmi Laravel yang semula TypeScript)
 - Queue: Redis (production), `database` (development)
 - Test: Pest. Format: Laravel Pint. Analisis statis: Larastan
 - Zona waktu aplikasi: `Asia/Jakarta`. Locale: `id`
@@ -54,9 +54,11 @@ Backend selesai (Tahap 00–11). Fase ini membangun halaman React di
    2. jalankan `npx shadcn@latest add <nama>` dengan `pnpm-workspace.yaml`
       dipindah sementara, dan jangan menimpa file yang sudah ada;
    3. ubah import ke `@radix-ui/react-<nama>` dan `@/lib/utils`, lalu
-      `npm uninstall cn radix-ui` bila ikut terpasang.
+      `npm uninstall cn radix-ui` bila ikut terpasang;
+   4. CLI menghasilkan `.jsx` (`components.json` `tsx: false`); tambahkan JSDoc
+      props (`@param {React.ComponentProps<...>} props`) agar `types:check` bersih.
 
-   `package-lock.json` adalah satu-satunya lockfile. Selain langkah 3, file
+   `package-lock.json` adalah satu-satunya lockfile. Selain langkah 3 dan 4, file
    di `components/ui` tidak diubah kecuali untuk token tema. Komponen bersama
    aplikasi ada di `resources/js/components/` (lihat F00); cek dulu sebelum
    membuat yang baru.
@@ -66,9 +68,16 @@ Backend selesai (Tahap 00–11). Fase ini membangun halaman React di
    key non-field (`status`, `customer`, `package`, `router`, `invoice`,
    `user`, `role`) tampil sebagai pesan umum (`FormErrorAlert`). Tombol submit
    dinonaktifkan selama `processing`.
-3. **TypeScript ketat**: tanpa `any`, tanpa `as unknown as`, dan tanpa
-   `@ts-ignore`. Tipe props setiap halaman mengikuti docs/08 dan memakai tipe
-   bersama di `resources/js/types/models.ts`. `npm run types:check` wajib bersih.
+3. **JSX + JSDoc ketat** (keputusan 2026-10-12): kode frontend ditulis sebagai
+   `.jsx`/`.js`, tanpa file `.ts`/`.tsx` tulisan tangan (pengecualian: helper
+   Wayfinder hasil generate di `actions/`, `routes/`, `wayfinder/`, serta
+   deklarasi `types/global.d.ts` dan `types/vite-env.d.ts`). Tipe ditulis
+   lewat JSDoc (`@param`, `@typedef`, `@import`, cast `/** @type {T} */ (x)`)
+   dan diperiksa `tsc` dengan `checkJs` + `strict` (`jsconfig.json`). Tanpa
+   `any`/`{*}`, tanpa cast ganda lewat `unknown`, dan tanpa `@ts-ignore`,
+   `@ts-expect-error`, atau `@ts-nocheck`. Tipe props setiap halaman mengikuti
+   docs/08 dan memakai tipe bersama di `resources/js/types/models.js`
+   (`@import { Customer } from '@/types'`). `npm run types:check` wajib bersih.
 4. **Bahasa & format**: semua teks UI dalam Bahasa Indonesia. Uang selalu
    lewat `formatRupiah()` (`Rp150.000`) dan tanggal lewat
    `formatDate()`/`formatDateTime()` (`6 Okt 2026`, `6 Okt 2026 14.30`, zona
@@ -125,7 +134,7 @@ php artisan migrate:fresh --seed      # reset database development
 php artisan schedule:list             # cek jadwal
 php artisan queue:work                # jalankan worker
 npm run dev                           # Vite dev server
-npm run types:check                   # cek TypeScript
+npm run types:check                   # cek tipe JSDoc (tsc -p jsconfig.json)
 npm run check                         # lint + format frontend (vp check)
 npm run build                         # build produksi
 php artisan wayfinder:generate        # regenerasi helper route TS

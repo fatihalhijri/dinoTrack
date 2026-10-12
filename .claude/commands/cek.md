@@ -7,7 +7,7 @@ Jalankan pemeriksaan kualitas berurutan:
 1. `./vendor/bin/pint`
 2. `./vendor/bin/phpstan analyse --memory-limit=1G`
 3. `php artisan test`
-4. `npm run types:check`
+4. `npm run types:check` (tipe JSDoc lewat `tsc -p jsconfig.json`)
 5. `npm run check`
 6. `npm run build`
 
