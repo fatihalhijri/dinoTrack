@@ -8,7 +8,7 @@ use App\Actions\Network\ApplyCustomerProfile;
 use App\Concerns\HandlesRouterFailures;
 use App\Enums\QueueName;
 use App\Models\Customer;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Attributes\Queue;
@@ -18,9 +18,13 @@ use Throwable;
  * Memasang profil paket dan meng-enable secret pelanggan `active` setelah aktivasi pelanggan
  * baru, ganti paket yang berlaku, atau koreksi paket. Profil dibaca saat job berjalan, jadi
  * satu job yang antre cukup untuk beberapa perubahan sekaligus.
+ *
+ * Kunci unik dilepas saat job mulai diproses (bukan setelah selesai): perubahan paket yang
+ * masuk ketika profil lama sedang dipasang di router harus mengantrekan job baru, bukan
+ * dibuang diam-diam sehingga router tertinggal di profil lama.
  */
 #[Queue(QueueName::Network)]
-final class ApplyCustomerProfileJob implements ShouldBeUnique, ShouldQueue
+final class ApplyCustomerProfileJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use HandlesRouterFailures, Queueable;
 

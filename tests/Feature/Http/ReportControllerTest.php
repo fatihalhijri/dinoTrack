@@ -49,6 +49,26 @@ it('menolak rentang pergerakan pelanggan yang terbalik', function () {
         ->assertSessionHasErrors('to');
 });
 
+it('menolak rentang yang terbalik setelah tanggal kosong diisi default', function (array $query) {
+    $this->actingAs(userWithRole(Role::Admin))
+        ->get(route('reports.index', $query))
+        ->assertSessionHasErrors('to');
+})->with([
+    'hanya tanggal akhir sebelum awal bulan ini' => [['to' => '2026-09-15']],
+    'hanya tanggal awal setelah hari ini' => [['from' => '2026-11-01']],
+]);
+
+it('menerima hanya salah satu tanggal jika rentangnya tetap urut', function () {
+    $this->actingAs(userWithRole(Role::Admin))
+        ->get(route('reports.index', ['from' => '2026-09-15']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('reports/index', true)
+            ->where('from', '2026-09-15')
+            ->where('to', today()->toDateString())
+            ->etc());
+});
+
 it('menampilkan daftar tunggakan dengan umur dan pencarian pelanggan', function () {
     $budi = customerOnProfile(Customer::factory()->active()->state(['name' => 'Budi Santoso']));
     invoiceDueAt($budi, '2026-10-10');

@@ -15,7 +15,8 @@ const GENERAL_ERROR_KEYS = [...NON_FIELD_ERROR_KEYS, 'router_id'];
 
 /**
  * Tandai pelanggan `pending` terpasang. Tanggal pasang default hari ini (WIB) dan boleh
- * mundur sampai tanggal pendaftaran; batasnya dijaga backend.
+ * mundur sampai tanggal pendaftaran langganan ini (pendaftaran ulang bagi pelanggan yang
+ * pernah berhenti); batasnya dijaga backend.
  */
 export default function ActivateCustomerDialog({
     customer,
@@ -27,6 +28,8 @@ export default function ActivateCustomerDialog({
     onOpenChange: (open: boolean) => void;
 }) {
     const today = toDateInputValue();
+    const registeredAt =
+        customer.subscription?.created_at ?? customer.created_at;
     const form = useForm({ installed_at: today });
 
     const submit = (): void => {
@@ -58,8 +61,8 @@ export default function ActivateCustomerDialog({
                         form.setData('installed_at', event.target.value)
                     }
                     min={
-                        customer.created_at
-                            ? toDateInputValue(customer.created_at)
+                        registeredAt
+                            ? toDateInputValue(registeredAt)
                             : undefined
                     }
                     max={today}

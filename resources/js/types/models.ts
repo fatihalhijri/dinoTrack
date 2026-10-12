@@ -75,6 +75,7 @@ export type Subscription = {
     billing_day: number;
     starts_at: string | null;
     ends_at: string | null;
+    created_at: string | null;
 };
 
 export type Customer = {

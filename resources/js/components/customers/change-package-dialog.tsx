@@ -24,8 +24,13 @@ export default function ChangePackageDialog({
     const subscription = customer.subscription;
     const currentPackageId = subscription?.package?.id;
     const nextPackageId = subscription?.next_package?.id;
+    // `packages` hanya berisi paket aktif: rencana ke paket yang sudah dinonaktifkan tidak
+    // dijadikan pilihan awal agar Select tidak tampak kosong lalu ditolak saat dikirim.
+    const isNextPackageSelectable = packages.some(
+        (packageItem) => packageItem.id === nextPackageId,
+    );
     const form = useForm({
-        package_id: nextPackageId === undefined ? '' : String(nextPackageId),
+        package_id: isNextPackageSelectable ? String(nextPackageId) : '',
     });
     const isPending = customer.status === 'pending';
 

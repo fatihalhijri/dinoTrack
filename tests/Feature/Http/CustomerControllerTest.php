@@ -144,6 +144,7 @@ it('menampilkan detail pelanggan tanpa riwayat tagihan untuk teknisi', function 
             ->component('customers/show', true)
             ->where('customer.id', $customer->id)
             ->where('customer.subscription.package.name', $customer->activeSubscription->package->name)
+            ->where('customer.subscription.created_at', $customer->activeSubscription->created_at->toIso8601String())
             ->where('invoices', null)
             ->where('payments', null)
             ->where('messages', null)

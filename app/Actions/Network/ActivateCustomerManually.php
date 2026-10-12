@@ -10,6 +10,7 @@ use App\Models\Customer;
 use App\Models\User;
 use App\Support\ActivityLogger;
 use App\Support\IsolationRules;
+use App\Support\SettingsRepository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -17,13 +18,15 @@ use Illuminate\Validation\ValidationException;
  * Admin membuka isolir (manual maupun otomatis) dengan alasan. Perintah router berjalan lewat
  * ActivateCustomerJob.
  *
- * Mengembalikan true jika pelanggan masih punya tunggakan lewat toleransi: isolir otomatis
- * berikutnya akan mengisolirnya lagi, sehingga admin perlu diberi peringatan.
+ * Mengembalikan true jika pelanggan masih punya tunggakan lewat toleransi dan isolir otomatis
+ * menyala: isolir otomatis berikutnya akan mengisolirnya lagi, sehingga admin perlu diberi
+ * peringatan. Jika `billing.auto_isolate` dimatikan, peringatan itu tidak berlaku.
  */
 final class ActivateCustomerManually
 {
     public function __construct(
         private readonly IsolationRules $rules,
+        private readonly SettingsRepository $settings,
         private readonly ActivityLogger $logger,
     ) {}
 
@@ -48,7 +51,7 @@ final class ActivateCustomerManually
 
             ActivateCustomerJob::dispatch($customer, true, $by, $reason)->afterCommit();
 
-            return $hasArrearsPastGrace;
+            return $hasArrearsPastGrace && $this->settings->autoIsolate();
         });
     }
 }

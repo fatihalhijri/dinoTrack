@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Actions\Customers\ActivateNewCustomer;
+use App\Actions\Customers\ReactivateCustomer;
+use App\Actions\Customers\TerminateCustomer;
 use App\Enums\CustomerStatus;
 use App\Jobs\ApplyCustomerProfileJob;
 use App\Jobs\SendInvoiceNotificationJob;
@@ -26,6 +28,7 @@ function pendingCustomerWithSubscription(int $billingDay = 10, int $price = 150_
         'billing_day' => $billingDay,
         'starts_at' => null,
         'price' => $price,
+        'created_at' => $registeredAt,
     ]);
 
     return $customer;
@@ -112,6 +115,29 @@ it('menolak tanggal pasang di masa depan atau sebelum tanggal pendaftaran', func
     'masa depan' => ['2026-10-16', 'masa depan'],
     'sebelum pendaftaran' => ['2026-10-04', 'sebelum tanggal pendaftaran'],
 ]);
+
+it('memakai tanggal pendaftaran ulang sebagai batas tanggal pasang agar periode langganan lama tidak ditagih lagi', function () {
+    Queue::fake([SendInvoiceNotificationJob::class]);
+    $this->travelTo('2026-01-05 09:00');
+    $customer = pendingCustomerWithSubscription(billingDay: 10, registeredAt: '2026-01-05');
+    app(ActivateNewCustomer::class)->handle($customer, today());
+
+    $this->travelTo('2026-10-20 09:00');
+    app(TerminateCustomer::class)->handle($customer);
+    $this->travelTo('2026-10-22 09:00');
+    app(ReactivateCustomer::class)->handle($customer, Package::factory()->create()->id, 10);
+    $invoiceCount = Invoice::query()->count();
+
+    expect(fn () => app(ActivateNewCustomer::class)->handle($customer, CarbonImmutable::parse('2026-09-01')))
+        ->toThrow(ValidationException::class, 'sebelum tanggal pendaftaran');
+
+    expect($customer->fresh()->status)->toBe(CustomerStatus::Pending)
+        ->and(Invoice::query()->count())->toBe($invoiceCount);
+
+    app(ActivateNewCustomer::class)->handle($customer, CarbonImmutable::parse('2026-10-22'));
+
+    expect($customer->fresh()->status)->toBe(CustomerStatus::Active);
+});
 
 it('menolak aktivasi jika router pelanggan nonaktif', function () {
     $customer = pendingCustomerWithSubscription();

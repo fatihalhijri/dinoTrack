@@ -100,7 +100,7 @@ type MessageTemplateKey = 'invoice_issued' | 'reminder_before_due' | 'reminder_d
 type Package = { id: number; name: string; speed_label: string; price: number; mikrotik_profile: string; is_active: boolean; description: string | null; subscriptions_count?: number }
 type Router = { id: number; name: string; host: string; port: number; username: string; use_ssl: boolean; isolation_profile: string; is_active: boolean; last_connected_at: string | null; customers_count?: number }
 type PackageSummary = { id: number; name: string; speed_label: string }
-type Subscription = { id: number; package?: PackageSummary; next_package?: PackageSummary | null; price: number; billing_day: number; starts_at: string | null; ends_at: string | null }
+type Subscription = { id: number; package?: PackageSummary; next_package?: PackageSummary | null; price: number; billing_day: number; starts_at: string | null; ends_at: string | null; created_at: string | null }
 type Customer = {
   id: number; code: string; name: string; phone: string; address: string; odp: string | null;
   latitude: string | null; longitude: string | null; router?: { id: number; name: string }; pppoe_username: string;
