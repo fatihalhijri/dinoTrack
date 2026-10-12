@@ -1,0 +1,73 @@
+import { router } from '@inertiajs/react';
+import { usePasskeyVerify } from '@laravel/passkeys/react';
+import { KeyRound } from 'lucide-react';
+import InputError from '@/components/input-error';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
+/** @import { UrlMethodPair } from '@inertiajs/core' */
+
+/**
+ * @typedef {object} Props
+ * @property {{ options: UrlMethodPair; submit: UrlMethodPair }} [routes]
+ * @property {string} [label]
+ * @property {string} [loadingLabel]
+ * @property {string} [separator]
+ */
+
+/** @param {Props} [props] */
+export default function PasskeyVerify({
+    routes,
+    label,
+    loadingLabel,
+    separator,
+} = {}) {
+    const { verify, isLoading, error, isSupported } = usePasskeyVerify({
+        ...(routes && {
+            routes: {
+                options: routes.options.url,
+                submit: routes.submit.url,
+            },
+        }),
+        onSuccess: (response) => {
+            router.visit(response.redirect ?? '/dashboard');
+        },
+    });
+
+    if (!isSupported) {
+        return null;
+    }
+
+    return (
+        <>
+            <div className="grid gap-2">
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={verify}
+                    disabled={isLoading}
+                >
+                    {isLoading ? <Spinner /> : <KeyRound className="h-4 w-4" />}
+                    {isLoading
+                        ? (loadingLabel ?? 'Memverifikasi...')
+                        : (label ?? 'Masuk dengan passkey')}
+                </Button>
+                {error && (
+                    <InputError message={error} className="text-center" />
+                )}
+            </div>
+
+            <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                    <Separator className="w-full" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                        {separator ?? 'Atau masuk dengan email'}
+                    </span>
+                </div>
+            </div>
+        </>
+    );
+}

@@ -1,0 +1,11 @@
+import { useCallback } from 'react';
+
+/** @typedef {() => void} CleanupFn */
+
+/** @returns {CleanupFn} */
+export function useMobileNavigation() {
+    return useCallback(() => {
+        // Remove pointer-events style from body...
+        document.body.style.removeProperty('pointer-events');
+    }, []);
+}

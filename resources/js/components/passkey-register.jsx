@@ -1,0 +1,112 @@
+import { usePasskeyRegister } from '@laravel/passkeys/react';
+import { useState } from 'react';
+import InputError from '@/components/input-error';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+/** @import { FormEvent } from 'react' */
+
+/**
+ * @typedef {object} Props
+ * @property {() => void} onSuccess
+ */
+
+/** @param {Props} props */
+export default function PasskeyRegistration({ onSuccess }) {
+    const [name, setName] = useState(() => {
+        const ua = navigator.userAgent;
+
+        const browser = [
+            { pattern: /Edg|Edge/, name: 'Edge' },
+            { pattern: /OPR|Opera|OPiOS/, name: 'Opera' },
+            { pattern: /Firefox|FxiOS/, name: 'Firefox' },
+            { pattern: /Chrome|CriOS/, name: 'Chrome' },
+            { pattern: /Safari/, name: 'Safari' },
+        ].find(({ pattern }) => pattern.test(ua))?.name;
+
+        const os = [
+            { pattern: /iPhone/, name: 'iPhone' },
+            { pattern: /iPad|Macintosh(?=.*Mobile)/, name: 'iPad' },
+            { pattern: /Android/, name: 'Android' },
+            { pattern: /Mac/, name: 'Mac' },
+            { pattern: /Windows/, name: 'Windows' },
+        ].find(({ pattern }) => pattern.test(ua))?.name;
+
+        return [browser, os].filter(Boolean).join(' on ') || '';
+    });
+
+    const [showForm, setShowForm] = useState(false);
+    const { register, isLoading, error, isSupported } = usePasskeyRegister({
+        onSuccess: () => {
+            setName('');
+            setShowForm(false);
+            onSuccess();
+        },
+    });
+
+    /** @param {FormEvent} e */
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        if (!name.trim()) {
+            return;
+        }
+
+        await register(name);
+    };
+
+    const handleCancel = () => {
+        setShowForm(false);
+        setName('');
+    };
+
+    if (!isSupported) {
+        return (
+            <div className="text-sm text-muted-foreground">
+                Browser ini tidak mendukung passkey.
+            </div>
+        );
+    }
+
+    if (!showForm) {
+        return (
+            <Button variant="outline" onClick={() => setShowForm(true)}>
+                Tambah passkey
+            </Button>
+        );
+    }
+
+    return (
+        <form
+            onSubmit={handleSubmit}
+            className="space-y-4 rounded-lg border border-border bg-muted/50 p-4"
+        >
+            <div className="grid gap-2">
+                <Label htmlFor="passkey-name">Nama passkey</Label>
+                <Input
+                    id="passkey-name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="mis. Laptop kantor, HP pribadi"
+                    className="mt-1 block w-full border-foreground/20"
+                    autoFocus
+                />
+                <p className="text-xs text-muted-foreground">
+                    Nama membantu Anda mengenali passkey ini nanti.
+                </p>
+            </div>
+
+            {error && <InputError message={error} />}
+
+            <div className="flex gap-2">
+                <Button type="submit" disabled={isLoading || !name.trim()}>
+                    {isLoading ? 'Mendaftarkan...' : 'Daftarkan passkey'}
+                </Button>
+                <Button type="button" variant="ghost" onClick={handleCancel}>
+                    Batal
+                </Button>
+            </div>
+        </form>
+    );
+}
