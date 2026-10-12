@@ -12,6 +12,17 @@ import { formatNumber } from '@/lib/format';
 const COORDINATE_DECIMALS = 7;
 
 /**
+ * Keypad `inputMode="decimal"` di iOS tidak punya tombol minus (hampir semua lintang di
+ * Indonesia negatif) dan memakai koma sebagai pemisah pada locale Indonesia, sehingga
+ * koordinat memakai keyboard teks dan koma diubah menjadi titik agar lolos validasi angka.
+ */
+const COORDINATE_INPUT_MODE = 'text';
+
+function normalizeCoordinate(value: string): string {
+    return value.replace(',', '.');
+}
+
+/**
  * Latitude/longitude pelanggan (opsional) dengan tombol "Pakai lokasi saya" untuk teknisi
  * yang sedang berada di lokasi pemasangan.
  */
@@ -48,12 +59,14 @@ export default function LocationFields({
                     <Label htmlFor="customer-latitude">Latitude</Label>
                     <Input
                         id="customer-latitude"
-                        inputMode="decimal"
+                        inputMode={COORDINATE_INPUT_MODE}
                         value={latitude}
                         onChange={(event) => {
                             setAccuracy(null);
                             onChange({
-                                latitude: event.target.value,
+                                latitude: normalizeCoordinate(
+                                    event.target.value,
+                                ),
                                 longitude,
                             });
                         }}
@@ -68,13 +81,15 @@ export default function LocationFields({
                     <Label htmlFor="customer-longitude">Longitude</Label>
                     <Input
                         id="customer-longitude"
-                        inputMode="decimal"
+                        inputMode={COORDINATE_INPUT_MODE}
                         value={longitude}
                         onChange={(event) => {
                             setAccuracy(null);
                             onChange({
                                 latitude,
-                                longitude: event.target.value,
+                                longitude: normalizeCoordinate(
+                                    event.target.value,
+                                ),
                             });
                         }}
                         placeholder="106.8166667"

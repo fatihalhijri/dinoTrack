@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Network\ActivateCustomer;
 use App\Actions\Network\ApplyCustomerProfile;
 use App\Actions\Network\IsolateCustomer;
+use App\Contracts\NetworkController;
 use App\Enums\IsolationReason;
 use App\Exceptions\RouterCommandException;
 use App\Exceptions\RouterUnreachableException;
@@ -15,6 +16,8 @@ use App\Jobs\DisableCustomerSecretJob;
 use App\Jobs\IsolateCustomerJob;
 use App\Models\ActivityLog;
 use App\Models\Customer;
+use App\Models\Package;
+use App\Models\Router;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Queue;
 
@@ -129,4 +132,45 @@ it('tidak membuang permintaan admin karena job otomatis untuk pelanggan yang sam
 
     Queue::assertPushed(ActivateCustomerJob::class, 2);
     Queue::assertPushed(IsolateCustomerJob::class, 2);
+});
+
+it('tidak membuang koreksi paket yang masuk saat job pasang profil sedang memanggil router', function () {
+    $customer = customerOnProfile(Customer::factory()->active(), 'Home-20');
+    $corrected = Package::factory()->create(['mikrotik_profile' => 'Home-50']);
+    $network = new class($customer, $corrected) implements NetworkController
+    {
+        /** @var list<string> */
+        public array $appliedProfiles = [];
+
+        public function __construct(private Customer $customer, private Package $corrected) {}
+
+        public function activate(Customer $customer, string $profile): void
+        {
+            $this->appliedProfiles[] = $profile;
+
+            if (count($this->appliedProfiles) === 1) {
+                $this->customer->activeSubscription()->firstOrFail()->update(['package_id' => $this->corrected->id]);
+                ApplyCustomerProfileJob::dispatch($this->customer);
+            }
+        }
+
+        public function testConnection(Router $router): bool
+        {
+            return true;
+        }
+
+        public function isolate(Customer $customer): void {}
+
+        public function disableSecret(Customer $customer): void {}
+
+        public function isOnline(Customer $customer): bool
+        {
+            return true;
+        }
+    };
+    app()->instance(NetworkController::class, $network);
+
+    ApplyCustomerProfileJob::dispatch($customer);
+
+    expect($network->appliedProfiles)->toBe(['Home-20', 'Home-50']);
 });

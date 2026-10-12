@@ -8,6 +8,7 @@ use App\Concerns\IndexQueryRules;
 use App\Enums\Permission;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 /**
  * Parameter halaman laporan: tahun pendapatan, rentang pergerakan pelanggan (default tahun
@@ -34,6 +35,28 @@ class ReportRequest extends FormRequest
             'year' => ['nullable', 'integer', 'between:'.self::MIN_YEAR.','.(today()->year + 1)],
             'from' => ['nullable', 'date_format:Y-m-d'],
             'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
+        ];
+    }
+
+    /**
+     * `after_or_equal:from` lolos jika `from` tidak dikirim, padahal tanggal yang kosong diisi
+     * default (awal bulan ini / hari ini) sehingga rentangnya bisa terbalik. Urutan dicek ulang
+     * setelah default terisi agar `?to=` atau `?from=` saja berakhir sebagai error validasi.
+     *
+     * @return array<int, callable(Validator): void>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                if ($validator->errors()->hasAny(['from', 'to'])) {
+                    return;
+                }
+
+                if ($this->from()->greaterThan($this->to())) {
+                    $validator->errors()->add('to', 'Tanggal akhir tidak boleh sebelum tanggal awal.');
+                }
+            },
         ];
     }
 

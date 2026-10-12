@@ -10,6 +10,7 @@ use App\Jobs\ActivateCustomerJob;
 use App\Jobs\IsolateCustomerJob;
 use App\Models\ActivityLog;
 use App\Models\Customer;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\DB;
@@ -74,6 +75,17 @@ it('admin membuka isolir dan diberi tahu jika pelanggan masih menunggak lewat to
     'masih menunggak' => ['2026-10-16', true],
     'tanpa tunggakan' => [null, false],
 ]);
+
+it('tidak memperingatkan isolir ulang saat buka isolir jika isolir otomatis dimatikan', function () {
+    Setting::query()->create(['key' => 'billing.auto_isolate', 'value' => false]);
+    $customer = customerOnProfile(Customer::factory()->isolated(IsolationReason::Overdue));
+    invoiceDueAt($customer, '2026-10-16');
+
+    $willBeIsolatedAgain = app(ActivateCustomerManually::class)->handle($customer, 'Janji bayar Jumat', User::factory()->create());
+
+    expect($willBeIsolatedAgain)->toBeFalse()
+        ->and(ActivityLog::query()->where('action', 'customer.activation_requested')->sole()->properties['has_arrears_past_grace'])->toBeTrue();
+});
 
 it('menolak buka isolir untuk pelanggan yang tidak sedang diisolir', function () {
     Queue::fake();

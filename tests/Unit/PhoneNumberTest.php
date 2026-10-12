@@ -15,6 +15,8 @@ it('menormalisasi nomor WhatsApp ke format 62xxx', function (string $input, stri
     'dengan titik' => ['0812.3456.7890', '6281234567890'],
     '+62 dengan kurung dan spasi' => ['+62 (812) 3456-7890', '6281234567890'],
     'spasi di ujung' => ['  081234567890  ', '6281234567890'],
+    '+62 diikuti 0' => ['+62 0812-3456-7890', '6281234567890'],
+    '62 diikuti 0' => ['6208123456789', '628123456789'],
 ]);
 
 it('mengembalikan bentuk bersih untuk format yang tidak dikenal agar ditolak validasi', function (string $input, string $expected) {

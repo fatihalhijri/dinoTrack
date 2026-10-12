@@ -62,8 +62,12 @@ dihitung ulang.
 - Internet langsung aktif tanpa menunggu tagihan pertama dibayar; tagihan
   mengikuti jatuh tempo dan toleransi seperti biasa.
 - Tanggal pasang default hari ini. Boleh diisi mundur, tetapi tidak di masa
-  depan dan tidak sebelum tanggal pendaftaran pelanggan. Jika tanggal pasang
-  mundur melewati `billing_day`, periode berikutnya ikut ditagih saat itu juga.
+  depan dan tidak sebelum tanggal pendaftaran pelanggan. Bagi pelanggan yang
+  didaftarkan kembali setelah berhenti, batasnya adalah tanggal pendaftaran
+  ulang (dibuatnya subscription baru), bukan tanggal pendaftaran pertama, agar
+  periode yang sudah ditagih subscription lama tidak ditagih lagi (keputusan
+  2026-10-12). Jika tanggal pasang mundur melewati `billing_day`, periode
+  berikutnya ikut ditagih saat itu juga.
 - Aktivasi ditolak jika router pelanggan nonaktif.
 - Status dan tagihan pertama langsung berubah dalam transaksi; pengaktifan
   secret di router dijalankan lewat job yang dicoba ulang (Tahap 06).

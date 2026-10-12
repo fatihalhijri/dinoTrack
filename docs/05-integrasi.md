@@ -259,4 +259,6 @@ FONNTE_TOKEN=
 ### Normalisasi nomor
 
 Simpan dan kirim dalam format `62xxxxxxxxxx`. Ubah awalan `08` → `628`,
-`+62` → `62`, hapus spasi dan tanda hubung.
+`+62` → `62`, hapus spasi dan tanda hubung. Angka 0 setelah kode negara
+(`+62 0812...` / `620812...`) dibuang karena nomor Indonesia tidak pernah
+diawali `620`.
